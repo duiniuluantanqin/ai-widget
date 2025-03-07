@@ -3,15 +3,21 @@
     <template #header>
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-medium">检查结果</h3>
-        <UButton
-          v-if="resultsList.length > 0"
-          color="blue"
-          variant="soft"
-          icon="i-heroicons-cloud-arrow-down"
-          @click="downloadResults"
-        >
-          下载结果
-        </UButton>
+        <div class="flex items-center space-x-2">
+          <div v-if="showSavedTip" class="text-green-600 flex items-center text-xs">
+            <UIcon name="i-heroicons-check-circle" class="mr-0.5 h-3 w-3" />
+            <span>已保存</span>
+          </div>
+          <UButton
+            v-if="resultsList.length > 0"
+            color="blue"
+            variant="soft"
+            icon="i-heroicons-cloud-arrow-down"
+            @click="downloadResults"
+          >
+            下载结果
+          </UButton>
+        </div>
       </div>
     </template>
     
@@ -265,6 +271,7 @@ const concurrentTasks = computed(() => props['concurrent-tasks']);
 // 状态管理
 const showDetailModal = ref(false);
 const selectedResultIndex = ref<number | null>(null);
+const showSavedTip = ref(false);
 
 // 计算属性
 const processingCount = computed(() => resultsList.value.filter(r => r.status === 'pending' || r.status === 'processing').length);
@@ -466,6 +473,9 @@ function autoSaveResults() {
     
     // 清理
     URL.revokeObjectURL(url);
+    
+    // 显示已保存提示（不会自动消失）
+    showSavedTip.value = true;
   } catch (error) {
     console.error('自动保存结果失败:', error);
   }
@@ -515,6 +525,9 @@ function downloadResults() {
     
     // 清理
     URL.revokeObjectURL(url);
+    
+    // 显示已保存提示（不会自动消失）
+    showSavedTip.value = true;
   } catch (error) {
     console.error('下载结果失败:', error);
   }

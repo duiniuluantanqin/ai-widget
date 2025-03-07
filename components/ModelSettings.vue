@@ -245,7 +245,7 @@
                 type="range"
                 v-model.number="processingConfigValue.concurrentTasks"
                 :min="1"
-                :max="100"
+                :max="20"
                 :step="1"
                 class="w-full h-2 bg-green-100 rounded-lg appearance-none cursor-pointer dark:bg-green-800"
                 @input="(e) => updateProcessingConfig('concurrentTasks', e)"
