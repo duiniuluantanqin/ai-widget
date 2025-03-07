@@ -20,7 +20,7 @@
 
 ## 环境要求
 
-- Node.js 16.x 或更高版本
+- [Node.js 16.x](https://nodejs.org/zh-cn/download) 或更高版本
 - 有效的API密钥（DeepSeek, SiliconFlow等）
 
 ## 快速开始
