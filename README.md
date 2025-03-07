@@ -37,9 +37,9 @@ npm install
 
 ```
 DEEPSEEK_API_KEY=your_deepseek_api_key
-DEEPSEEK_API_URL=https://api.deepseek.com
+DEEPSEEK_API_URL=https://api.deepseek.com/v1
 SILICONFLOW_API_KEY=your_siliconflow_api_key
-SILICONFLOW_API_URL=https://api.siliconflow.com
+SILICONFLOW_API_URL=https://api.siliconflow.cn/v1
 ```
 
 ### 开发模式
