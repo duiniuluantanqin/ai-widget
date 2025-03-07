@@ -27,9 +27,41 @@
           color="blue"
           title="正在处理中"
           icon="i-heroicons-clock"
-          :description="`正在处理 ${processingCount} 个文件，请稍候...`"
+          :description="`正在处理 ${processingCount} 个文件（${concurrentTasks}线程并行），请稍候...`"
           class="mb-4"
-        />
+        >
+          <template #description>
+            <div class="flex justify-between items-center">
+              <span>正在处理 {{ processingCount }} 个文件（{{ concurrentTasks }}线程并行），请稍候...</span>
+              <UButton
+                color="red"
+                variant="soft"
+                size="sm"
+                icon="i-heroicons-stop"
+                @click="$emit('stop')"
+              >
+                终止处理
+              </UButton>
+            </div>
+          </template>
+        </UAlert>
+      </template>
+      
+      <!-- 处理完成提示 -->
+      <template v-if="isAllProcessed && hasSuccessFiles">
+        <UAlert
+          color="green"
+          title="处理完成"
+          icon="i-heroicons-check-circle"
+          class="mb-4"
+        >
+          <template #description>
+            <div>
+              <p>成功处理 {{ successCount }} 个文件，共发现 {{ totalSuggestions }} 条改进建议。</p>
+              <p v-if="totalSuggestions === 0" class="text-sm mt-1">未发现需要改进的地方，代码质量良好！</p>
+            </div>
+          </template>
+        </UAlert>
       </template>
       
       <!-- 失败状态显示 -->
@@ -49,6 +81,7 @@
         :columns="[
           { key: 'fileName', label: '文件名' },
           { key: 'status', label: '状态' },
+          { key: 'suggestions', label: '建议数量' },
           { key: 'actions', label: '操作' }
         ]"
       >
@@ -61,6 +94,14 @@
           <UBadge v-else-if="row.status === 'processing'" color="blue">处理中</UBadge>
           <UBadge v-else-if="row.status === 'success'" color="green">成功</UBadge>
           <UBadge v-else-if="row.status === 'error'" color="red">失败</UBadge>
+        </template>
+        
+        <template #suggestions-data="{ row }">
+          <div v-if="row.status === 'success'" class="text-center">
+            <UBadge v-if="getFileSuggestionCount(row) > 0" color="amber">{{ getFileSuggestionCount(row) }}</UBadge>
+            <span v-else class="text-green-600">无需改进</span>
+          </div>
+          <div v-else>-</div>
         </template>
         
         <template #actions-data="{ row, index }">
@@ -168,11 +209,18 @@ const props = defineProps({
   results: {
     type: Array as () => CheckResult[],
     default: () => []
+  },
+  'concurrent-tasks': {
+    type: Number,
+    default: 2
   }
 });
 
+const emit = defineEmits(['stop']);
+
 // 计算属性，防止直接操作props
 const resultsList = computed(() => props.results || []);
+const concurrentTasks = computed(() => props['concurrent-tasks']);
 
 // 状态管理
 const showDetailModal = ref(false);
@@ -181,8 +229,43 @@ const selectedResultIndex = ref<number | null>(null);
 // 计算属性
 const processingCount = computed(() => resultsList.value.filter(r => r.status === 'pending' || r.status === 'processing').length);
 const errorCount = computed(() => resultsList.value.filter(r => r.status === 'error').length);
+const successCount = computed(() => resultsList.value.filter(r => r.status === 'success').length);
 const hasProcessingFiles = computed(() => processingCount.value > 0);
 const hasErrorFiles = computed(() => errorCount.value > 0);
+const hasSuccessFiles = computed(() => successCount.value > 0);
+
+// 计算所有成功处理的文件中的改进建议总数
+const totalSuggestions = computed(() => {
+  let count = 0;
+  
+  resultsList.value.forEach(result => {
+    if (result.status === 'success') {
+      try {
+        // 尝试解析JSON结果
+        if (result.isValidJson !== false) {
+          const parsed = JSON.parse(result.results);
+          if (Array.isArray(parsed)) {
+            count += parsed.length;
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            // 单个对象也算一条建议
+            count += 1;
+          }
+        }
+      } catch (e) {
+        // 解析失败，不计入建议数
+      }
+    }
+  });
+  
+  return count;
+});
+
+// 是否所有文件都已处理完成（无论成功或失败）
+const isAllProcessed = computed(() => {
+  return resultsList.value.length > 0 && 
+         !hasProcessingFiles.value && 
+         (hasSuccessFiles.value || hasErrorFiles.value);
+});
 
 // 结果列定义
 const resultColumns = [
@@ -292,5 +375,29 @@ function downloadResults() {
   } catch (error) {
     console.error('下载结果失败:', error);
   }
+}
+
+/**
+ * 获取单个文件的建议数量
+ */
+function getFileSuggestionCount(result: CheckResult): number {
+  if (result.status !== 'success') return 0;
+  
+  try {
+    // 尝试解析JSON结果
+    if (result.isValidJson !== false) {
+      const parsed = JSON.parse(result.results);
+      if (Array.isArray(parsed)) {
+        return parsed.length;
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        // 单个对象也算一条建议
+        return 1;
+      }
+    }
+  } catch (e) {
+    // 解析失败，不计入建议数
+  }
+  
+  return 0;
 }
 </script> 

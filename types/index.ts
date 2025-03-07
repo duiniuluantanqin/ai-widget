@@ -22,6 +22,13 @@ export interface ModelParameters {
   temperature: number;
   top_p: number;
   max_tokens: number;
+  presence_penalty: number;
+  frequency_penalty: number;
+}
+
+// 处理配置类型
+export interface ProcessingConfig {
+  concurrentTasks: number; // 同时处理的文件数量
 }
 
 // 文件检查请求类型

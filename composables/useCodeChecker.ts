@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue';
-import type { CheckResult, CheckType, FileCheckRequest, ModelInfo, ModelParameters, ModelProvider, ProviderInfo } from '~/types';
+import type { CheckResult, CheckType, FileCheckRequest, ModelInfo, ModelParameters, ModelProvider, ProcessingConfig, ProviderInfo } from '~/types';
 import { DEFAULT_PROMPTS } from '~/types';
 import { ThreadManager } from '~/utils';
 
@@ -18,12 +18,21 @@ export function useCodeChecker() {
   const currentCheckType = ref<CheckType>('spelling');
   const customPrompt = ref<string>('');
   const providers = ref<ProviderInfo[]>([]);
+  // 处理控制标志
+  const shouldContinueProcessing = ref(true);
   
   // 模型参数
   const modelParameters = ref<ModelParameters>({
-    temperature: 0.3,
-    top_p: 0.95,
-    max_tokens: 2048
+    temperature: 0.1,
+    top_p: 1.0,
+    max_tokens: 4000,
+    presence_penalty: 0.0,
+    frequency_penalty: 0.0
+  });
+  
+  // 处理配置
+  const processingConfig = ref<ProcessingConfig>({
+    concurrentTasks: 2 // 默认同时处理2个文件
   });
 
   // 计算属性
@@ -73,6 +82,72 @@ export function useCodeChecker() {
     } catch (error) {
       console.error(`处理文件 ${fileName} 时出错:`, error);
       throw error;
+    }
+  }
+  
+  /**
+   * 处理单个文件
+   * @param fileIndex 文件索引
+   */
+  async function processFile(fileIndex: number): Promise<void> {
+    // 如果处理已被终止，则直接返回
+    if (!shouldContinueProcessing.value) return;
+    
+    const file = selectedFiles.value[fileIndex];
+    
+    try {
+      // 更新为处理中状态
+      checkResults.value[fileIndex] = {
+        ...checkResults.value[fileIndex],
+        status: 'processing'
+      };
+      
+      // 读取文件内容
+      const content = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+      
+      // 如果处理已被终止，则不继续调用API
+      if (!shouldContinueProcessing.value) {
+        checkResults.value[fileIndex] = {
+          ...checkResults.value[fileIndex],
+          status: 'error',
+          error: '用户终止了处理'
+        };
+        return;
+      }
+      
+      // 调用API进行代码检查
+      const { results, isValidJson } = await callCodeCheckApi(content, file.name);
+      
+      // 如果处理已被终止，则不更新结果
+      if (!shouldContinueProcessing.value) {
+        checkResults.value[fileIndex] = {
+          ...checkResults.value[fileIndex],
+          status: 'error',
+          error: '用户终止了处理'
+        };
+        return;
+      }
+      
+      // 更新结果
+      checkResults.value[fileIndex] = {
+        ...checkResults.value[fileIndex],
+        content,
+        results,
+        isValidJson,
+        status: 'success'
+      };
+    } catch (error) {
+      // 处理错误
+      checkResults.value[fileIndex] = {
+        ...checkResults.value[fileIndex],
+        status: 'error',
+        error: error instanceof Error ? error.message : String(error)
+      };
     }
   }
   
@@ -156,6 +231,7 @@ export function useCodeChecker() {
     if (!hasFiles.value || isProcessing.value) return;
     
     isProcessing.value = true;
+    shouldContinueProcessing.value = true; // 重置处理控制标志
     checkResults.value = [];
     
     try {
@@ -170,50 +246,38 @@ export function useCodeChecker() {
         isValidJson: true  // 默认假设是有效的JSON
       }));
       
-      // 一次处理一个文件
-      for (let i = 0; i < selectedFiles.value.length; i++) {
-        const file = selectedFiles.value[i];
-        
-        try {
-          // 更新为处理中状态
-          checkResults.value[i] = {
-            ...checkResults.value[i],
-            status: 'processing'
-          };
-          
-          // 读取文件内容
-          const content = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsText(file);
-          });
-          
-          // 调用API进行代码检查
-          const { results, isValidJson } = await callCodeCheckApi(content, file.name);
-          
-          // 更新结果
-          checkResults.value[i] = {
-            ...checkResults.value[i],
-            content,
-            results,
-            isValidJson,
-            status: 'success'
-          };
-        } catch (error) {
-          // 处理错误
-          checkResults.value[i] = {
-            ...checkResults.value[i],
-            status: 'error',
-            error: error instanceof Error ? error.message : String(error)
-          };
-        }
-      }
+      // 创建文件索引数组
+      const fileIndices = Array.from({ length: selectedFiles.value.length }, (_, i) => i);
+      
+      // 使用并行处理
+      await processFilesInParallel(fileIndices, processingConfig.value.concurrentTasks);
       
     } catch (error) {
       console.error('检查过程中出错:', error);
     } finally {
       isProcessing.value = false;
+    }
+  }
+
+  /**
+   * 终止检查
+   */
+  function stopCheck() {
+    if (isProcessing.value) {
+      shouldContinueProcessing.value = false;
+      
+      // 将所有pending状态的任务标记为已终止
+      checkResults.value.forEach(result => {
+        if (result.status === 'pending' || result.status === 'processing') {
+          result.status = 'error';
+          result.error = '用户终止了处理';
+        }
+      });
+      
+      // 重置处理状态
+      isProcessing.value = false;
+      
+      console.log('用户终止了处理');
     }
   }
 
@@ -258,6 +322,16 @@ export function useCodeChecker() {
   function setCustomPrompt(prompt: string) {
     customPrompt.value = prompt;
   }
+  
+  /**
+   * 设置处理配置
+   */
+  function setProcessingConfig(config: Partial<ProcessingConfig>) {
+    processingConfig.value = {
+      ...processingConfig.value,
+      ...config
+    };
+  }
 
   /**
    * 获取当前状态
@@ -272,18 +346,76 @@ export function useCodeChecker() {
       currentModelId: currentModelId.value,
       currentCheckType: currentCheckType.value,
       customPrompt: customPrompt.value,
-      modelParameters: modelParameters.value,
       defaultPrompt: defaultPrompt.value,
-      effectivePrompt: effectivePrompt.value,
-      hasFiles: hasFiles.value,
-      hasResults: hasResults.value,
+      modelParameters: modelParameters.value,
+      processingConfig: processingConfig.value,
       providers: providers.value,
-      availableModels: availableModels.value
+      hasFiles: hasFiles.value,
+      hasResults: hasResults.value
     };
   }
 
+  /**
+   * 并行处理多个文件
+   * @param fileIndices 文件索引数组
+   * @param concurrentTasks 并行任务数
+   */
+  async function processFilesInParallel(fileIndices: number[], concurrentTasks: number): Promise<void> {
+    // 创建任务队列
+    const queue = [...fileIndices];
+    const activePromises = new Map<number, Promise<void>>();
+    
+    // 处理队列中的任务
+    async function processQueue() {
+      // 检查是否应该继续处理
+      if (!shouldContinueProcessing.value) {
+        // 清空队列
+        queue.length = 0;
+        // 不等待活动任务完成，直接返回
+        return;
+      }
+      
+      // 当队列为空且没有活动任务时，处理完成
+      if (queue.length === 0 && activePromises.size === 0) {
+        return;
+      }
+      
+      // 当队列不为空且活动任务数小于并行任务数时，启动新任务
+      while (queue.length > 0 && activePromises.size < concurrentTasks && shouldContinueProcessing.value) {
+        const fileIndex = queue.shift()!;
+        
+        // 创建处理任务
+        const promise = processFile(fileIndex).finally(() => {
+          // 任务完成后从活动任务中移除
+          activePromises.delete(fileIndex);
+          // 继续处理队列，但只有在应该继续处理时才继续
+          if (shouldContinueProcessing.value) {
+            return processQueue();
+          }
+        });
+        
+        // 添加到活动任务
+        activePromises.set(fileIndex, promise);
+      }
+      
+      // 等待任意一个任务完成，但只有在应该继续处理时才等待
+      if (activePromises.size > 0 && shouldContinueProcessing.value) {
+        await Promise.race(activePromises.values());
+      }
+    }
+    
+    // 开始处理队列
+    try {
+      await processQueue();
+    } catch (error) {
+      console.error('并行处理过程中出错:', error);
+      // 确保在出错时也能重置处理状态
+      shouldContinueProcessing.value = false;
+    }
+  }
+
   return {
-    // 原始响应式对象
+    // 状态
     isProcessing,
     isLoadingModels,
     selectedFiles,
@@ -292,16 +424,15 @@ export function useCodeChecker() {
     currentModelId,
     currentCheckType,
     customPrompt,
+    providers,
     modelParameters,
+    processingConfig,
+    
+    // 计算属性
     defaultPrompt,
     effectivePrompt,
     hasFiles,
     hasResults,
-    providers,
-    
-    // 计算属性
-    availableModels,
-    currentProvider,
     
     // 方法
     loadModels,
@@ -310,15 +441,14 @@ export function useCodeChecker() {
     removeFile,
     clearFiles,
     startCheck,
-    
-    // 新增的setter方法
+    stopCheck,
     setModelProvider,
     setModelId,
     setCheckType,
     setModelParameters,
     setCustomPrompt,
-    
-    // 获取当前状态
-    getState
+    setProcessingConfig,
+    getState,
+    processFilesInParallel
   };
 } 

@@ -30,7 +30,20 @@
       
       <template v-if="filesList.length > 0">
         <div class="space-y-2 mt-4">
-          <h4 class="text-sm font-medium">已上传文件 ({{ filesList.length }})</h4>
+          <div class="flex justify-between items-center">
+            <h4 class="text-sm font-medium">已上传文件 ({{ filesList.length }})</h4>
+            <div class="flex gap-2">
+              <UButton
+                color="blue"
+                variant="soft"
+                icon="i-heroicons-plus"
+                size="xs"
+                @click="openFileDialog"
+              >
+                继续上传
+              </UButton>
+            </div>
+          </div>
           <ul class="space-y-2 max-h-60 overflow-y-auto">
             <li v-for="(file, index) in filesList" :key="index" class="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-md">
               <div class="flex items-center">
@@ -46,6 +59,20 @@
               />
             </li>
           </ul>
+          
+          <!-- 添加拖放区域，允许继续上传 -->
+          <div 
+            class="mt-3 text-center p-4 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
+            @click="openFileDialog"
+            @drop.prevent="onFileDrop"
+            @dragover.prevent="() => {}"
+            @dragenter.prevent="() => {}"
+          >
+            <div class="flex items-center justify-center">
+              <UIcon name="i-heroicons-document-arrow-up" class="text-xl mr-2" />
+              <span>拖放文件到此处或点击继续上传</span>
+            </div>
+          </div>
         </div>
       </template>
       <template v-else>
@@ -122,7 +149,28 @@ function onFileDrop(event: DragEvent) {
  * 处理文件选择
  */
 function handleFileSelect(files: File[]) {
-  emit('update:files', files || []);
+  // 不直接替换，而是合并现有文件和新文件
+  const newFiles = files || [];
+  
+  // 如果没有新文件，则不做任何操作
+  if (newFiles.length === 0) return;
+  
+  // 合并文件并去重
+  const combinedFiles = [...props.files];
+  
+  // 添加新文件（如果不存在）
+  newFiles.forEach(newFile => {
+    const fileExists = combinedFiles.some(existingFile => 
+      existingFile.name === newFile.name && existingFile.size === newFile.size
+    );
+    
+    if (!fileExists) {
+      combinedFiles.push(newFile);
+    }
+  });
+  
+  // 更新文件列表
+  emit('update:files', combinedFiles);
 }
 
 /**

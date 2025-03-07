@@ -40,11 +40,13 @@
                 :default-prompt="state.defaultPrompt"
                 :providers="state.providers"
                 :is-loading="state.isLoadingModels"
+                :processing-config="state.processingConfig"
                 @update:model="codeChecker.setModelProvider"
                 @update:model-id="codeChecker.setModelId"
                 @update:check-type="codeChecker.setCheckType"
                 @update:parameters="codeChecker.setModelParameters"
                 @update:prompt="codeChecker.setCustomPrompt"
+                @update:processing-config="handleUpdateProcessingConfig"
               />
               
               <!-- 文件上传 -->
@@ -71,7 +73,11 @@
           
           <!-- 右侧结果面板 -->
           <div class="lg:col-span-8">
-            <ResultsList :results="state.checkResults" />
+            <ResultsList 
+              :results="state.checkResults" 
+              :concurrent-tasks="state.processingConfig.concurrentTasks"
+              @stop="handleStopCheck"
+            />
           </div>
         </div>
       </div>
@@ -80,9 +86,11 @@
 </template>
 
 <script setup lang="ts">
+// 导入组件
+
 // 导入组合函数
 import { useCodeChecker } from '~/composables/useCodeChecker';
-import type { ModelProvider, CheckType, ModelParameters } from '~/types';
+import type { ModelProvider, CheckType, ModelParameters, ProcessingConfig } from '~/types';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { FileUtils } from '~/utils/file-utils';
 
@@ -124,8 +132,7 @@ async function retryLoadModels() {
 
 // 更新文件 - 使用FileUtils处理文件
 function updateFiles(files: File[]) {
-  // 清空现有文件
-  codeChecker.clearFiles();
+  // 不再清空现有文件，而是追加新文件
   
   // 使用FileUtils处理文件
   if (files && files.length > 0) {
@@ -134,7 +141,14 @@ function updateFiles(files: File[]) {
     
     // 依次添加每个文件
     processedFiles.forEach(file => {
-      codeChecker.addFile(file);
+      // 检查是否已存在同名文件，避免重复添加
+      const fileExists = state.value.selectedFiles.some(existingFile => 
+        existingFile.name === file.name && existingFile.size === file.size
+      );
+      
+      if (!fileExists) {
+        codeChecker.addFile(file);
+      }
     });
     
     console.log('文件已添加:', processedFiles.length, '个文件');
@@ -156,9 +170,21 @@ function handleClearFiles() {
   state.value = codeChecker.getState();
 }
 
+// 更新处理配置
+function handleUpdateProcessingConfig(config: any) {
+  codeChecker.setProcessingConfig(config as ProcessingConfig);
+  state.value = codeChecker.getState();
+}
+
 // 开始检查
 function handleStartCheck() {
   codeChecker.startCheck();
+  state.value = codeChecker.getState();
+}
+
+// 终止检查
+function handleStopCheck() {
+  codeChecker.stopCheck();
   state.value = codeChecker.getState();
 }
 

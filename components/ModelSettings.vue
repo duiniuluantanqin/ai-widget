@@ -113,7 +113,7 @@
             class="text-indigo-500 dark:text-indigo-400"
           />
         </div>
-        
+          
         <div v-if="isParametersOpen" class="p-3 space-y-3 bg-white dark:bg-gray-900">
           <!-- 随机性 (temperature) -->
           <div class="grid grid-cols-2 gap-3 items-center">
@@ -216,12 +216,51 @@
           </div>
         </div>
       </div>
+      
+      <!-- 多线程处理配置 -->
+      <div class="border border-green-100 dark:border-green-900 rounded-md mt-4 overflow-hidden">
+        <div 
+          class="flex justify-between items-center p-3 cursor-pointer bg-green-50 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800"
+          @click="isThreadConfigOpen = !isThreadConfigOpen"
+        >
+          <div class="flex items-center">
+            <UIcon name="i-heroicons-cpu-chip" class="mr-2 text-green-600 dark:text-green-400" />
+            <span class="font-medium text-green-700 dark:text-green-300">检查参数设置</span>
+          </div>
+          <UIcon 
+            :name="isThreadConfigOpen ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" 
+            class="text-green-500 dark:text-green-400"
+          />
+        </div>
+          
+        <div v-if="isThreadConfigOpen" class="p-3 space-y-3 bg-white dark:bg-gray-900">
+          <!-- 并行处理数量 -->
+          <div class="grid grid-cols-2 gap-3 items-center">
+            <div>
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">并行处理数量</div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">同时处理的文件数量</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                type="range"
+                v-model.number="processingConfigValue.concurrentTasks"
+                :min="1"
+                :max="8"
+                :step="1"
+                class="w-full h-2 bg-green-100 rounded-lg appearance-none cursor-pointer dark:bg-green-800"
+                @input="(e) => updateProcessingConfig('concurrentTasks', e)"
+              />
+              <span class="text-sm tabular-nums w-10 text-right text-green-600 dark:text-green-400 font-medium">{{ processingConfigValue.concurrentTasks }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </UCard>
 </template>
 
 <script setup lang="ts">
-import type { ModelInfo, ModelProvider, CheckType, ProviderInfo } from '~/types';
+import type { ModelInfo, ModelProvider, CheckType, ProviderInfo, ProcessingConfig } from '~/types';
 import { DEFAULT_PROMPTS } from '~/types';
 import { computed, ref, watch } from 'vue';
 
@@ -250,7 +289,7 @@ const props = defineProps({
   parameters: {
     type: Object as () => ModelParameters,
     default: () => ({
-      temperature: 0.5,
+      temperature: 0.1,
       top_p: 1.0,
       max_tokens: 4000,
       presence_penalty: 0.0,
@@ -272,6 +311,12 @@ const props = defineProps({
   isLoading: {
     type: Boolean,
     default: false
+  },
+  processingConfig: {
+    type: Object as () => ProcessingConfig,
+    default: () => ({
+      concurrentTasks: 2
+    })
   }
 });
 
@@ -281,6 +326,7 @@ const emit = defineEmits<{
   'update:checkType': [value: CheckType];
   'update:parameters': [value: ModelParameters];
   'update:prompt': [value: string];
+  'update:processingConfig': [value: ProcessingConfig];
 }>();
 
 // 安全获取数字，防止undefined
@@ -291,7 +337,7 @@ function safeNumber(value?: number): number {
 // 确保参数总是有值
 const safeParameters = computed(() => {
   const defaultParams = {
-    temperature: 0.5,
+    temperature: 0.1,
     top_p: 1.0,
     max_tokens: 4000,
     presence_penalty: 0.0,
@@ -349,6 +395,8 @@ const checkTypesValue = ref({
 
 // 参数面板展开状态
 const isParametersOpen = ref(true);
+// 多线程配置面板展开状态
+const isThreadConfigOpen = ref(true);
 
 // 监听多选值变化，更新checkType
 watch(checkTypesValue, (newVal) => {
@@ -399,11 +447,28 @@ const promptValue = computed({
 
 function resetParameters() {
   parametersValue.value = {
-    temperature: 0.5,
+    temperature: 0.1,
     top_p: 1.0,
     max_tokens: 4000,
     presence_penalty: 0.0,
     frequency_penalty: 0.0
   };
+}
+
+// 处理配置
+const processingConfigValue = computed({
+  get: () => props.processingConfig,
+  set: (value: ProcessingConfig) => emit('update:processingConfig', value)
+});
+
+// 更新处理配置方法
+function updateProcessingConfig(key: keyof ProcessingConfig, event: Event) {
+  const target = event.target as HTMLInputElement;
+  const numValue = parseInt(target.value);
+  if (!isNaN(numValue)) {
+    const newConfig = { ...processingConfigValue.value };
+    newConfig[key] = numValue;
+    emit('update:processingConfig', newConfig);
+  }
 }
 </script> 
