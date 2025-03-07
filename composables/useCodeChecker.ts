@@ -21,6 +21,9 @@ export function useCodeChecker() {
   // 处理控制标志
   const shouldContinueProcessing = ref(true);
   
+  // 存储活动请求的控制器
+  const activeAbortControllers = new Map<number, AbortController>();
+  
   // 模型参数
   const modelParameters = ref<ModelParameters>({
     temperature: 0.1,
@@ -49,8 +52,13 @@ export function useCodeChecker() {
    * @param fileName 文件名
    * @returns 检查结果
    */
-  async function callCodeCheckApi(codeContent: string, fileName: string): Promise<{results: string, isValidJson: boolean}> {
+  async function callCodeCheckApi(codeContent: string, fileName: string, fileIndex: number): Promise<{results: string, isValidJson: boolean}> {
     try {
+      // 创建AbortController
+      const controller = new AbortController();
+      // 存储控制器以便后续可以中止请求
+      activeAbortControllers.set(fileIndex, controller);
+      
       const response = await fetch('/api/chat/completions', {
         method: 'POST',
         headers: {
@@ -64,7 +72,11 @@ export function useCodeChecker() {
           prompt: customPrompt.value || undefined,
           parameters: modelParameters.value
         }),
+        signal: controller.signal // 添加信号以支持中止
       });
+      
+      // 请求完成后移除控制器
+      activeAbortControllers.delete(fileIndex);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -80,6 +92,14 @@ export function useCodeChecker() {
         isValidJson: data.isValidJson
       };
     } catch (error) {
+      // 移除控制器
+      activeAbortControllers.delete(fileIndex);
+      
+      // 如果是中止错误，则抛出特定错误
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error('请求已被用户终止');
+      }
+      
       console.error(`处理文件 ${fileName} 时出错:`, error);
       throw error;
     }
@@ -121,7 +141,7 @@ export function useCodeChecker() {
       }
       
       // 调用API进行代码检查
-      const { results, isValidJson } = await callCodeCheckApi(content, file.name);
+      const { results, isValidJson } = await callCodeCheckApi(content, file.name, fileIndex);
       
       // 如果处理已被终止，则不更新结果
       if (!shouldContinueProcessing.value) {
@@ -266,6 +286,15 @@ export function useCodeChecker() {
     if (isProcessing.value) {
       shouldContinueProcessing.value = false;
       
+      // 中止所有活动的API请求
+      activeAbortControllers.forEach((controller, index) => {
+        console.log(`中止文件索引 ${index} 的请求`);
+        controller.abort();
+      });
+      
+      // 清空控制器映射
+      activeAbortControllers.clear();
+      
       // 将所有pending状态的任务标记为已终止
       checkResults.value.forEach(result => {
         if (result.status === 'pending' || result.status === 'processing') {
@@ -277,7 +306,7 @@ export function useCodeChecker() {
       // 重置处理状态
       isProcessing.value = false;
       
-      console.log('用户终止了处理');
+      console.log('用户终止了处理，已中止所有活动请求');
     }
   }
 
@@ -414,6 +443,20 @@ export function useCodeChecker() {
     }
   }
 
+  /**
+   * 更新单个检查结果
+   * @param index 结果索引
+   * @param result 新的结果对象
+   */
+  function updateCheckResult(index: number, result: Partial<CheckResult>) {
+    if (index >= 0 && index < checkResults.value.length) {
+      checkResults.value[index] = {
+        ...checkResults.value[index],
+        ...result
+      };
+    }
+  }
+
   return {
     // 状态
     isProcessing,
@@ -449,6 +492,7 @@ export function useCodeChecker() {
     setCustomPrompt,
     setProcessingConfig,
     getState,
-    processFilesInParallel
+    processFilesInParallel,
+    updateCheckResult
   };
 } 

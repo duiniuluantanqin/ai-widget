@@ -23,6 +23,8 @@ export abstract class BaseModel {
       temperature: number;
       top_p: number;
       max_tokens: number;
+      presence_penalty?: number;
+      frequency_penalty?: number;
     },
     modelId?: string
   ): Promise<string>;

@@ -2,11 +2,21 @@ import { ModelFactory } from '~/models';
 import type { CheckType, ModelProvider } from '~/types';
 import { DEFAULT_PROMPTS } from '~/types';
 
+// 设置请求超时时间（毫秒）
+const REQUEST_TIMEOUT = 60000; // 60秒
+
 /**
  * 聊天完成API
  * 处理代码检查请求并返回结果
  */
 export default defineEventHandler(async (event) => {
+  // 创建超时Promise
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error('请求超时'));
+    }, REQUEST_TIMEOUT);
+  });
+  
   try {
     // 获取请求体
     const body = await readBody(event);
@@ -29,6 +39,8 @@ export default defineEventHandler(async (event) => {
         temperature: number;
         top_p: number;
         max_tokens: number;
+        presence_penalty?: number;
+        frequency_penalty?: number;
       };
     };
     
@@ -37,6 +49,13 @@ export default defineEventHandler(async (event) => {
       throw createError({
         statusCode: 400,
         statusMessage: '缺少代码内容'
+      });
+    }
+    
+    if (typeof code !== 'string' || code.trim() === '') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: '代码内容不能为空'
       });
     }
     
@@ -101,14 +120,17 @@ export default defineEventHandler(async (event) => {
     console.log(code.substring(0, 50) + (code.length > 50 ? '...' : ''));
     console.log('------------------------');
     
-    // 执行代码检查
-    const results = await model.checkCode(
+    // 执行代码检查，添加超时处理
+    const modelPromise = model.checkCode(
       code,
       checkType,
       actualPrompt,
       parameters,
       modelName // 传递模型ID/名称
     );
+    
+    // 使用Promise.race在超时和模型响应之间竞争
+    const results = await Promise.race([modelPromise, timeoutPromise]) as string;
     
     // 打印模型返回的原始结果，用于调试
     console.log('\n---- 模型原始返回结果 ----');
@@ -168,6 +190,12 @@ export default defineEventHandler(async (event) => {
     if (error.statusCode) {
       // 已创建的HTTP错误
       throw error;
+    } else if (error.message === '请求超时') {
+      // 超时错误
+      throw createError({
+        statusCode: 408,
+        statusMessage: '请求处理超时，请尝试减少代码量或调整参数'
+      });
     } else {
       // 其他错误
       throw createError({

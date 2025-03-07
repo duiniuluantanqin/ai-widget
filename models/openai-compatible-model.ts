@@ -39,6 +39,8 @@ export class OpenAICompatibleModel extends BaseModel {
       temperature: number;
       top_p: number;
       max_tokens: number;
+      presence_penalty?: number;
+      frequency_penalty?: number;
     },
     modelId: string = 'default'
   ): Promise<string> {
@@ -60,6 +62,8 @@ export class OpenAICompatibleModel extends BaseModel {
         temperature: params.temperature,
         top_p: params.top_p,
         max_tokens: params.max_tokens,
+        presence_penalty: params.presence_penalty || 0,
+        frequency_penalty: params.frequency_penalty || 0,
       });
 
       return response.choices[0]?.message.content || '未能获取有效结果';

@@ -77,6 +77,7 @@
               :results="state.checkResults" 
               :concurrent-tasks="state.processingConfig.concurrentTasks"
               @stop="handleStopCheck"
+              @retry-item="retryItem"
             />
           </div>
         </div>
@@ -90,7 +91,8 @@
 
 // 导入组合函数
 import { useCodeChecker } from '~/composables/useCodeChecker';
-import type { ModelProvider, CheckType, ModelParameters, ProcessingConfig } from '~/types';
+import { useToast as useNuxtToast } from '#imports';
+import type { ModelProvider, CheckType, ModelParameters, ProcessingConfig, CheckResult } from '~/types';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { FileUtils } from '~/utils/file-utils';
 
@@ -186,6 +188,193 @@ function handleStartCheck() {
 function handleStopCheck() {
   codeChecker.stopCheck();
   state.value = codeChecker.getState();
+}
+
+// 添加重试处理方法
+async function retryItem(item: CheckResult) {
+  console.log('接收到重试请求:', item.fileName, '当前状态:', item.status);
+  
+  // 创建AbortController用于可能的中止
+  const controller = new AbortController();
+  // 存储当前重试的项目索引和控制器
+  let currentRetryIndex = -1;
+  
+  try {
+    // 更新状态为处理中
+    const index = state.value.checkResults.findIndex(r => 
+      r.fileName === item.fileName
+    );
+    
+    console.log('找到索引:', index);
+    currentRetryIndex = index;
+    
+    if (index !== -1) {
+      // 使用codeChecker更新状态
+      codeChecker.updateCheckResult(index, {
+        status: 'processing',
+        error: undefined
+      });
+      
+      // 更新本地状态
+      state.value = codeChecker.getState();
+      
+      console.log('状态已更新为处理中');
+    } else {
+      console.warn('未找到要重试的项目');
+      return;
+    }
+    
+    // 检查文件内容是否存在，如果不存在则重新读取
+    let fileContent = item.content;
+    if (!fileContent) {
+      console.log('文件内容为空，尝试重新读取文件');
+      // 查找对应的文件
+      const file = state.value.selectedFiles.find(f => f.name === item.fileName);
+      if (file) {
+        // 读取文件内容
+        fileContent = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+        console.log('成功读取文件内容，长度:', fileContent.length);
+      } else {
+        throw new Error('找不到对应的文件');
+      }
+    }
+    
+    // 获取当前模型设置
+    const modelSettings = {
+      modelProvider: state.value.currentModelProvider,
+      modelId: state.value.currentModelId,
+      checkType: state.value.currentCheckType,
+      parameters: state.value.modelParameters,
+      customPrompt: state.value.customPrompt
+    };
+    
+    console.log('准备发送请求，模型设置:', modelSettings);
+    
+    // 添加终止处理的事件处理
+    const stopRetryHandler = () => {
+      console.log('用户终止了重试处理');
+      controller.abort();
+      
+      // 更新状态为已终止
+      if (currentRetryIndex !== -1) {
+        // 使用codeChecker更新状态
+        codeChecker.updateCheckResult(currentRetryIndex, {
+          status: 'error',
+          error: '用户终止了处理'
+        });
+        
+        // 更新本地状态
+        state.value = codeChecker.getState();
+      }
+      
+      // 移除事件监听器
+      window.removeEventListener('stop-retry', stopRetryHandler);
+    };
+    
+    // 添加事件监听器
+    window.addEventListener('stop-retry', stopRetryHandler);
+    
+    // 发送重试请求到正确的接口
+    const response = await fetch('/api/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        code: fileContent, // 使用重新读取的文件内容
+        checkType: state.value.currentCheckType,
+        modelProvider: state.value.currentModelProvider,
+        modelId: state.value.currentModelId,
+        prompt: state.value.customPrompt || undefined,
+        parameters: {
+          temperature: state.value.modelParameters.temperature,
+          top_p: state.value.modelParameters.top_p,
+          max_tokens: state.value.modelParameters.max_tokens,
+          presence_penalty: state.value.modelParameters.presence_penalty,
+          frequency_penalty: state.value.modelParameters.frequency_penalty
+        }
+      }),
+      signal: controller.signal // 添加信号以支持中止
+    });
+    
+    // 移除事件监听器
+    window.removeEventListener('stop-retry', stopRetryHandler);
+    
+    console.log('收到响应状态:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`请求失败: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('解析响应结果:', result);
+    
+    // 更新结果
+    if (index !== -1) {
+      // 使用codeChecker更新状态
+      codeChecker.updateCheckResult(index, {
+        content: fileContent, // 更新文件内容
+        results: result.results,
+        isValidJson: result.isValidJson,
+        status: 'success',
+        error: undefined
+      });
+      
+      // 更新本地状态
+      state.value = codeChecker.getState();
+      
+      console.log('状态已更新为成功');
+    }
+    
+    // 显示成功消息
+    const toast = useNuxtToast();
+    toast.add({
+      title: '重试成功',
+      description: '文件已重新处理',
+      color: 'green'
+    });
+  } catch (error) {
+    console.error('重试失败:', error);
+    
+    // 移除事件监听器
+    window.removeEventListener('stop-retry', () => {});
+    
+    // 如果是中止错误，显示特定消息
+    const isAbortError = error instanceof DOMException && error.name === 'AbortError';
+    
+    // 更新状态为失败
+    const index = state.value.checkResults.findIndex(r => 
+      r.fileName === item.fileName
+    );
+    
+    if (index !== -1) {
+      // 使用codeChecker更新状态
+      codeChecker.updateCheckResult(index, {
+        status: 'error',
+        error: isAbortError ? '用户终止了处理' : (error instanceof Error ? error.message : '重试失败')
+      });
+      
+      // 更新本地状态
+      state.value = codeChecker.getState();
+      
+      console.log('状态已更新为失败');
+    }
+    
+    // 显示错误消息，除非是中止错误
+    if (!isAbortError) {
+      const toast = useNuxtToast();
+      toast.add({
+        title: '重试失败',
+        description: error instanceof Error ? error.message : '重试请求失败',
+        color: 'red'
+      });
+    }
+  }
 }
 
 // 启动状态更新并加载模型列表

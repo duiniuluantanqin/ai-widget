@@ -93,7 +93,7 @@
           <UBadge v-if="row.status === 'pending'" color="gray">等待中</UBadge>
           <UBadge v-else-if="row.status === 'processing'" color="blue">处理中</UBadge>
           <UBadge v-else-if="row.status === 'success'" color="green">成功</UBadge>
-          <UBadge v-else-if="row.status === 'error'" color="red">失败</UBadge>
+          <UBadge v-else-if="row.status === 'error' || row.status === 'failed'" color="red">失败</UBadge>
         </template>
         
         <template #suggestions-data="{ row }">
@@ -115,8 +115,29 @@
           >
             查看结果
           </UButton>
-          <div v-else-if="row.status === 'error'" class="text-sm text-red-500">
-            {{ row.error }}
+          <div v-else-if="row.status === 'processing'" class="flex items-center">
+            <span class="text-sm text-blue-500 mr-2">处理中...</span>
+            <UButton
+              color="red"
+              variant="soft"
+              icon="i-heroicons-stop"
+              size="xs"
+              @click="() => stopRetryItem(row)"
+            >
+              终止
+            </UButton>
+          </div>
+          <div v-else-if="row.status === 'error' || row.status === 'failed'" class="flex items-center">
+            <span class="text-sm text-red-500 mr-2">{{ row.error || '处理失败' }}</span>
+            <UButton
+              color="blue"
+              variant="soft"
+              icon="i-heroicons-arrow-path"
+              size="xs"
+              @click="() => retryItem(row)"
+            >
+              重试
+            </UButton>
           </div>
         </template>
       </UTable>
@@ -143,7 +164,15 @@
             <div v-if="isJsonParsed && parsedResults.length > 0">
               <UTable :rows="parsedResults" :columns="resultColumns">
                 <template #line-data="{ row }">
-                  <div class="text-center font-mono">{{ row.line }}</div>
+                  <UButton
+                    variant="ghost"
+                    color="blue"
+                    size="xs"
+                    class="text-center font-mono"
+                    @click="scrollToLine(row.line)"
+                  >
+                    {{ row.line }}
+                  </UButton>
                 </template>
                 
                 <template #original-data="{ row }">
@@ -182,9 +211,20 @@
             </div>
             
             <!-- 源代码展示 -->
-            <UAccordion :items="[{ label: '查看源代码', slot: 'source' }]">
+            <UAccordion :items="[{ label: '查看源代码', slot: 'source', defaultOpen: true }]">
               <template #source>
-                <pre class="bg-gray-50 dark:bg-gray-800 p-4 rounded overflow-auto max-h-96 text-sm font-mono">{{ selectedResult.content }}</pre>
+                <div class="relative">
+                  <div ref="codeContainer" class="bg-gray-50 dark:bg-gray-800 p-4 rounded overflow-auto max-h-96 text-sm font-mono">
+                    <table class="w-full border-collapse">
+                      <tbody>
+                        <tr v-for="(line, index) in sourceCodeLines" :key="index" :class="{ 'bg-yellow-100 dark:bg-yellow-900/30': highlightedLines.includes(index + 1) }">
+                          <td class="text-right pr-4 text-gray-500 select-none w-10" :id="`line-${index + 1}`">{{ index + 1 }}</td>
+                          <td class="whitespace-pre">{{ line }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </template>
             </UAccordion>
             
@@ -203,7 +243,7 @@
 
 <script setup lang="ts">
 import type { CheckResult, CheckResultItem } from '~/types';
-import { computed, ref } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 
 const props = defineProps({
   results: {
@@ -216,7 +256,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['stop']);
+const emit = defineEmits(['stop', 'select-result', 'retry-item']);
 
 // 计算属性，防止直接操作props
 const resultsList = computed(() => props.results || []);
@@ -317,6 +357,52 @@ const rawResultsText = computed(() => {
   return selectedResult.value.results;
 });
 
+// 源代码相关
+const codeContainer = ref<HTMLElement | null>(null);
+const highlightedLines = ref<number[]>([]);
+const sourceCodeLines = computed(() => {
+  if (!selectedResult.value?.content) return [];
+  return selectedResult.value.content.split('\n');
+});
+
+// 自动高亮问题行
+watch(() => parsedResults.value, (newResults) => {
+  if (newResults && newResults.length > 0) {
+    // 收集所有问题行
+    highlightedLines.value = newResults.map(item => item.line).filter(line => typeof line === 'number');
+    
+    // 如果有问题行，自动滚动到第一个问题行
+    if (highlightedLines.value.length > 0) {
+      nextTick(() => {
+        scrollToLine(highlightedLines.value[0]);
+      });
+    }
+  } else {
+    highlightedLines.value = [];
+  }
+}, { immediate: true });
+
+/**
+ * 滚动到指定行并高亮显示
+ */
+function scrollToLine(lineNumber: number) {
+  nextTick(() => {
+    const lineElement = document.getElementById(`line-${lineNumber}`);
+    if (lineElement && codeContainer.value) {
+      // 滚动到指定行，并使其位于容器中间
+      const containerHeight = codeContainer.value.clientHeight;
+      const lineTop = lineElement.offsetTop;
+      codeContainer.value.scrollTop = lineTop - containerHeight / 2;
+      
+      // 添加闪烁动画效果
+      lineElement.parentElement?.classList.add('flash-highlight');
+      setTimeout(() => {
+        lineElement.parentElement?.classList.remove('flash-highlight');
+      }, 2000);
+    }
+  });
+}
+
 /**
  * 切换结果详情显示
  */
@@ -400,4 +486,32 @@ function getFileSuggestionCount(result: CheckResult): number {
   
   return 0;
 }
-</script> 
+
+/**
+ * 重试处理失败的项目
+ */
+function retryItem(item: CheckResult) {
+  console.log('触发重试事件:', item.fileName);
+  emit('retry-item', item);
+}
+
+/**
+ * 终止重试处理
+ */
+function stopRetryItem(item: CheckResult) {
+  console.log('触发终止重试事件:', item.fileName);
+  // 触发自定义事件以终止重试
+  window.dispatchEvent(new CustomEvent('stop-retry'));
+}
+</script>
+
+<style scoped>
+.flash-highlight {
+  animation: flash 2s ease-out;
+}
+
+@keyframes flash {
+  0% { background-color: rgba(250, 204, 21, 0.8); }
+  100% { background-color: inherit; }
+}
+</style> 

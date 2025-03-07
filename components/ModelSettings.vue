@@ -234,10 +234,10 @@
         </div>
           
         <div v-if="isThreadConfigOpen" class="p-3 space-y-3 bg-white dark:bg-gray-900">
-          <!-- 并行处理数量 -->
+          <!-- 线程数 -->
           <div class="grid grid-cols-2 gap-3 items-center">
             <div>
-              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">并行处理数量</div>
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">线程数</div>
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">同时处理的文件数量</p>
             </div>
             <div class="flex items-center gap-2">
@@ -245,7 +245,7 @@
                 type="range"
                 v-model.number="processingConfigValue.concurrentTasks"
                 :min="1"
-                :max="8"
+                :max="100"
                 :step="1"
                 class="w-full h-2 bg-green-100 rounded-lg appearance-none cursor-pointer dark:bg-green-800"
                 @input="(e) => updateProcessingConfig('concurrentTasks', e)"
