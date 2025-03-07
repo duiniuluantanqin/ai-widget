@@ -307,6 +307,14 @@ const isAllProcessed = computed(() => {
          (hasSuccessFiles.value || hasErrorFiles.value);
 });
 
+// 监听处理完成状态，自动保存结果
+watch(isAllProcessed, (newValue) => {
+  if (newValue && hasSuccessFiles.value) {
+    // 当所有文件处理完成且有成功处理的文件时，自动保存结果
+    autoSaveResults();
+  }
+}, { immediate: false });
+
 // 结果列定义
 const resultColumns = [
   { key: 'line', label: '行号' },
@@ -412,6 +420,55 @@ function toggleResultDetail(index: number) {
   
   // 触发解析逻辑
   const _ = parsedResults.value;
+}
+
+/**
+ * 自动保存所有结果到下载目录
+ */
+function autoSaveResults() {
+  try {
+    // 准备下载内容 - 处理成结构化数据
+    const results = resultsList.value
+      .filter(r => r.status === 'success')
+      .map(r => {
+        // 尝试解析JSON结果
+        let parsedItems = [];
+        let isJson = true;
+        
+        try {
+          parsedItems = JSON.parse(r.results);
+          if (!Array.isArray(parsedItems)) {
+            parsedItems = [parsedItems];
+          }
+        } catch (e) {
+          isJson = false;
+          parsedItems = [];
+        }
+        
+        return {
+          fileName: r.fileName,
+          checkType: r.checkType,
+          modelProvider: r.modelProvider,
+          results: isJson ? parsedItems : r.results, // 如果解析失败，返回原始文本
+          isJsonFormat: isJson
+        }
+      });
+    
+    // 创建Blob对象
+    const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+    
+    // 创建URL并触发下载
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `code-check-results-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    
+    // 清理
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('自动保存结果失败:', error);
+  }
 }
 
 /**
