@@ -121,6 +121,17 @@
           >
             查看结果
           </UButton>
+          <UButton
+            v-if="row.status === 'success'"
+            color="blue"
+            variant="soft"
+            icon="i-heroicons-arrow-path"
+            size="xs"
+            class="ml-2"
+            @click="() => retryItem(row)"
+          >
+            重新检查
+          </UButton>
           <div v-else-if="row.status === 'processing'" class="flex items-center">
             <span class="text-sm text-blue-500 mr-2">处理中...</span>
             <UButton

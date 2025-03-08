@@ -33,6 +33,10 @@
             class="w-full"
             placeholder="选择模型提供商"
           />
+          <div v-if="userInfo" class="mt-1 text-xs text-gray-600 dark:text-gray-400 flex items-center">
+            <UIcon name="i-heroicons-credit-card" class="mr-1 h-3 w-3" />
+            <span>余额: {{ userInfo.totalBalance }} {{ userInfo.unit }}</span>
+          </div>
         </div>
         
         <!-- 模型选择 -->
@@ -260,18 +264,9 @@
 </template>
 
 <script setup lang="ts">
-import type { ModelInfo, ModelProvider, CheckType, ProviderInfo, ProcessingConfig } from '~/types';
+import type { ModelProvider, CheckType, ModelParameters, ProcessingConfig, ProviderInfo } from '~/types';
 import { DEFAULT_PROMPTS } from '~/types';
-import { computed, ref, watch } from 'vue';
-
-// 更新 ModelParameters 接口
-interface ModelParameters {
-  temperature: number;
-  top_p: number;
-  max_tokens: number;
-  presence_penalty: number;
-  frequency_penalty: number;
-}
+import { computed, ref, watch, onMounted } from 'vue';
 
 const props = defineProps({
   model: {
@@ -378,7 +373,11 @@ const selectedModel = computed(() =>
 // 模型提供商
 const modelProviderValue = computed({
   get: () => props.model,
-  set: (value: ModelProvider) => emit('update:model', value)
+  set: (value: ModelProvider) => {
+    emit('update:model', value);
+    // 当选择厂商后，获取用户信息
+    fetchUserInfo(value);
+  }
 });
 
 // 模型ID
@@ -461,6 +460,32 @@ const processingConfigValue = computed({
   set: (value: ProcessingConfig) => emit('update:processingConfig', value)
 });
 
+// 用户信息
+const userInfo = ref<{
+  provider: ModelProvider;
+  totalBalance: number;
+  unit: string;
+  status: string;
+} | null>(null);
+
+// 获取用户信息
+async function fetchUserInfo(provider: ModelProvider) {
+  try {
+    userInfo.value = null;
+    const response = await fetch(`/api/user/info?provider=${provider}`);
+    
+    if (!response.ok) {
+      console.error('获取用户信息失败:', response.statusText);
+      return;
+    }
+    
+    const data = await response.json();
+    userInfo.value = data;
+  } catch (error) {
+    console.error('获取用户信息出错:', error);
+  }
+}
+
 // 更新处理配置方法
 function updateProcessingConfig(key: keyof ProcessingConfig, event: Event) {
   const target = event.target as HTMLInputElement;
@@ -471,4 +496,11 @@ function updateProcessingConfig(key: keyof ProcessingConfig, event: Event) {
     emit('update:processingConfig', newConfig);
   }
 }
+
+// 组件挂载时获取用户信息
+onMounted(() => {
+  if (props.model) {
+    fetchUserInfo(props.model);
+  }
+});
 </script> 
