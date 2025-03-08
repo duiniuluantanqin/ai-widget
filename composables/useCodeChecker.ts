@@ -52,7 +52,7 @@ export function useCodeChecker() {
    * @param fileName 文件名
    * @returns 检查结果
    */
-  async function callCodeCheckApi(codeContent: string, fileName: string, fileIndex: number): Promise<{results: string, isValidJson: boolean}> {
+  async function callCodeCheckApi(codeContent: string, fileName: string, fileIndex: number): Promise<{results: string, isValidJson: boolean, requestId: string}> {
     try {
       // 创建AbortController
       const controller = new AbortController();
@@ -89,7 +89,8 @@ export function useCodeChecker() {
       const data = await response.json();
       return {
         results: data.results,
-        isValidJson: data.isValidJson
+        isValidJson: data.isValidJson,
+        requestId: data.requestId
       };
     } catch (error) {
       // 移除控制器
@@ -141,7 +142,7 @@ export function useCodeChecker() {
       }
       
       // 调用API进行代码检查
-      const { results, isValidJson } = await callCodeCheckApi(content, file.name, fileIndex);
+      const { results, isValidJson, requestId } = await callCodeCheckApi(content, file.name, fileIndex);
       
       // 如果处理已被终止，则不更新结果
       if (!shouldContinueProcessing.value) {
@@ -159,6 +160,7 @@ export function useCodeChecker() {
         content,
         results,
         isValidJson,
+        requestId,
         status: 'success'
       };
     } catch (error) {
@@ -263,7 +265,8 @@ export function useCodeChecker() {
         modelProvider: currentModelProvider.value, 
         status: 'pending',
         results: '',
-        isValidJson: true  // 默认假设是有效的JSON
+        isValidJson: true,  // 默认假设是有效的JSON
+        requestId: ''
       }));
       
       // 创建文件索引数组

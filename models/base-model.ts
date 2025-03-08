@@ -14,6 +14,7 @@ export abstract class BaseModel {
    * @param prompt 自定义提示语
    * @param params 模型参数
    * @param modelId 模型ID或名称
+   * @param abortController 用于终止请求的控制器
    */
   abstract checkCode(
     code: string,
@@ -26,6 +27,7 @@ export abstract class BaseModel {
       presence_penalty?: number;
       frequency_penalty?: number;
     },
-    modelId?: string
+    modelId?: string,
+    abortController?: AbortController
   ): Promise<string>;
 } 

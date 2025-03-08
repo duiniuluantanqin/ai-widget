@@ -1,6 +1,7 @@
 import { ModelFactory } from '~/models';
 import type { CheckType, ModelProvider } from '~/types';
 import { DEFAULT_PROMPTS } from '~/types';
+import { registerActiveRequest, removeActiveRequest } from '../check/stop.post';
 
 // 设置请求超时时间（毫秒）
 const REQUEST_TIMEOUT = 60000; // 60秒
@@ -17,7 +18,14 @@ export default defineEventHandler(async (event) => {
     }, REQUEST_TIMEOUT);
   });
   
+  // 创建请求ID和AbortController
+  const requestId = Date.now().toString() + Math.random().toString(36).substring(2, 15);
+  const abortController = new AbortController();
+  
   try {
+    // 注册请求到终止系统
+    registerActiveRequest(requestId, abortController);
+    
     // 获取请求体
     const body = await readBody(event);
     
@@ -110,6 +118,7 @@ export default defineEventHandler(async (event) => {
     
     // 打印请求和提示词信息，用于调试
     console.log('---- 代码检查请求 ----');
+    console.log(`请求ID: ${requestId}`);
     console.log(`模型提供者: ${modelProvider}`);
     console.log(`模型ID: ${modelName}`);
     console.log(`检查类型: ${checkType}`);
@@ -126,7 +135,8 @@ export default defineEventHandler(async (event) => {
       checkType,
       actualPrompt,
       parameters,
-      modelName // 传递模型ID/名称
+      modelName, // 传递模型ID/名称
+      abortController // 传递AbortController
     );
     
     // 使用Promise.race在超时和模型响应之间竞争
@@ -176,14 +186,21 @@ export default defineEventHandler(async (event) => {
       }
     }
     
+    // 从终止系统中移除请求
+    removeActiveRequest(requestId);
+    
     // 返回结果
     return {
       status: 'success',
+      requestId, // 返回请求ID，便于前端终止特定请求
       results: formattedResults,
       isValidJson: isValidJson,
       originalResults: isValidJson ? undefined : results // 如果不是有效JSON，也返回原始结果
     };
   } catch (error: any) {
+    // 从终止系统中移除请求
+    removeActiveRequest(requestId);
+    
     // 错误处理
     console.error('API处理错误:', error);
     
@@ -196,6 +213,12 @@ export default defineEventHandler(async (event) => {
         statusCode: 408,
         statusMessage: '请求处理超时，请尝试减少代码量或调整参数'
       });
+    } else if (error.message === '请求已被用户终止') {
+      // 用户终止的请求
+      return {
+        status: 'cancelled',
+        message: '请求已被用户终止'
+      };
     } else {
       // 其他错误
       throw createError({

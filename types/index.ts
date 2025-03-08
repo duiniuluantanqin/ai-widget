@@ -59,6 +59,7 @@ export interface CheckResult {
   status: 'pending' | 'processing' | 'success' | 'error';
   error?: string;
   isValidJson?: boolean; // 添加此字段标识结果是否为有效JSON
+  requestId?: string; // 添加请求ID，用于终止特定请求
 }
 
 // 检查结果项目类型 - 用于解析后的结果项

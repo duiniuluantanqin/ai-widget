@@ -29,6 +29,7 @@ export class OpenAICompatibleModel extends BaseModel {
    * @param prompt 自定义提示语(可选)
    * @param params 模型参数
    * @param modelId 模型ID或名称
+   * @param abortController 用于终止请求的控制器
    * @returns 检查结果
    */
   async checkCode(
@@ -42,7 +43,8 @@ export class OpenAICompatibleModel extends BaseModel {
       presence_penalty?: number;
       frequency_penalty?: number;
     },
-    modelId: string = 'default'
+    modelId: string = 'default',
+    abortController?: AbortController
   ): Promise<string> {
     try {
       const finalPrompt = `${prompt}\n\n代码内容:\n\`\`\`\n${code}\n\`\`\``;
@@ -64,10 +66,15 @@ export class OpenAICompatibleModel extends BaseModel {
         max_tokens: params.max_tokens,
         presence_penalty: params.presence_penalty || 0,
         frequency_penalty: params.frequency_penalty || 0,
-      });
+      }, { signal: abortController?.signal });
 
       return response.choices[0]?.message.content || '未能获取有效结果';
     } catch (error) {
+      // 如果是因为请求被终止而失败，抛出特定错误
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('请求已被用户终止');
+      }
+      
       console.error('模型API调用失败:', error);
       throw new Error(`API调用失败: ${error instanceof Error ? error.message : String(error)}`);
     }

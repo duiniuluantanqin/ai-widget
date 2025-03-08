@@ -185,9 +185,30 @@ function handleStartCheck() {
 }
 
 // 终止检查
-function handleStopCheck() {
+async function handleStopCheck() {
+  // 前端终止处理
   codeChecker.stopCheck();
   state.value = codeChecker.getState();
+  
+  // 调用后端API终止所有请求
+  try {
+    const response = await fetch('/api/check/stop', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
+    });
+    
+    if (!response.ok) {
+      throw new Error(`终止请求失败: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('终止所有请求结果:', data.message);
+  } catch (error) {
+    console.error('终止所有请求失败:', error);
+  }
 }
 
 // 添加重试处理方法

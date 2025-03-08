@@ -589,6 +589,62 @@ function stopRetryItem(item: CheckResult) {
   console.log('触发终止重试事件:', item.fileName);
   // 触发自定义事件以终止重试
   window.dispatchEvent(new CustomEvent('stop-retry'));
+  
+  // 调用后端API终止处理
+  if (item.requestId) {
+    stopProcessingRequest(item.requestId);
+  } else {
+    // 如果没有特定的请求ID，终止所有请求
+    stopAllProcessingRequests();
+  }
+}
+
+/**
+ * 终止所有处理请求
+ */
+async function stopAllProcessingRequests() {
+  try {
+    const response = await fetch('/api/check/stop', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
+    });
+    
+    if (!response.ok) {
+      throw new Error(`终止请求失败: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('终止所有请求结果:', data.message);
+  } catch (error) {
+    console.error('终止所有请求失败:', error);
+  }
+}
+
+/**
+ * 终止特定处理请求
+ */
+async function stopProcessingRequest(requestId: string) {
+  try {
+    const response = await fetch('/api/check/stop', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ requestId })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`终止请求失败: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('终止请求结果:', data.message);
+  } catch (error) {
+    console.error('终止请求失败:', error);
+  }
 }
 
 /**
