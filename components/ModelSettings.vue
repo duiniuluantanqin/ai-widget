@@ -21,7 +21,17 @@
         <div>
           <div class="flex justify-between mb-1">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">厂商</label>
-            <UBadge v-if="isLoading" color="blue" size="sm">加载中...</UBadge>
+            <div class="flex items-center">
+              <UBadge v-if="isLoading" color="blue" size="sm">加载中...</UBadge>
+              <UButton
+                variant="link"
+                size="xs"
+                class="text-blue-500 hover:text-blue-700"
+                @click="showRechargeModal = true"
+              >
+                薅羊毛
+              </UButton>
+            </div>
           </div>
           <USelect
             v-model="modelProviderValue"
@@ -265,6 +275,95 @@
       </div>
     </div>
   </UCard>
+
+  <!-- 添加充值对话框 -->
+  <UModal v-model="showRechargeModal">
+    <UCard class="border-blue-200 dark:border-blue-800">
+      <template #header>
+        <div class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -mx-4 -mt-4 px-4 py-3 rounded-t-lg">
+          <h3 class="text-lg font-medium text-blue-800 dark:text-blue-300">限时福利</h3>
+          <UButton
+            color="gray"
+            variant="ghost"
+            icon="i-heroicons-x-mark"
+            class="-my-1"
+            @click="showRechargeModal = false"
+          />
+        </div>
+      </template>
+      
+      <div class="py-4 space-y-5">
+        <div class="text-center">
+          <UIcon name="i-heroicons-gift" class="h-14 w-14 mx-auto text-blue-500 mb-3" />
+          <h4 class="text-xl font-medium mb-3 text-blue-700 dark:text-blue-300">双赢福利</h4>
+          <p class="text-gray-700 dark:text-gray-300 text-base">
+            通过我的链接注册硅基流动，双方都会获得<span class="text-red-500 font-bold text-lg">14块钱</span>！
+          </p>
+          <p class="text-gray-600 dark:text-gray-400 mt-2">
+            <UIcon name="i-heroicons-heart" class="inline-block mr-1 text-red-500" />
+            我会将获得的奖励全部作为福利回馈给大家使用
+          </p>
+        </div>
+        
+        <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
+          <p class="text-sm mb-3 font-medium flex items-center">
+            <UIcon name="i-heroicons-cursor-arrow-rays" class="mr-2 text-blue-600 dark:text-blue-400" />
+            点击下方链接直接注册：
+          </p>
+          <a 
+            :href="inviteLink" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            class="block p-3 bg-blue-100 dark:bg-blue-800 rounded-md text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-700 transition-colors text-center font-medium shadow-sm hover:shadow"
+          >
+            硅基流动注册链接
+          </a>
+        </div>
+        
+        <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+          <p class="text-sm mb-3 font-medium flex items-center">
+            <UIcon name="i-heroicons-clipboard-document" class="mr-2 text-gray-600 dark:text-gray-400" />
+            或复制链接分享给朋友：
+          </p>
+          <div class="flex">
+            <UInput
+              :model-value="inviteLink"
+              readonly
+              class="flex-1"
+            />
+            <UButton
+              color="blue"
+              class="ml-2"
+              @click="copyInviteLink"
+            >
+              复制
+            </UButton>
+          </div>
+        </div>
+        
+        <div class="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-100 dark:border-amber-800">
+          <p class="text-sm text-amber-800 dark:text-amber-300 flex items-start">
+            <UIcon name="i-heroicons-information-circle" class="mr-2 h-5 w-5 flex-shrink-0 text-amber-500" />
+            <span>
+              <strong>提示：</strong>成功注册后请刷新页面，即可看到账户金额发生变化。
+            </span>
+          </p>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="flex justify-end">
+          <UButton
+            color="blue"
+            variant="soft"
+            @click="showRechargeModal = false"
+          >
+            关闭
+          </UButton>
+        </div>
+      </template>
+    </UCard>
+  </UModal>
 </template>
 
 <script setup lang="ts">
@@ -482,6 +581,33 @@ const processingConfigValue = computed({
   get: () => safeProcessingConfig.value,
   set: (value: ProcessingConfig) => emit('update:processingConfig', value)
 });
+
+// 充值相关
+const showRechargeModal = ref(false);
+const inviteLink = ref(`https://cloud.siliconflow.cn/i/5sSwk5jh`);
+
+// 复制邀请链接
+function copyInviteLink() {
+  navigator.clipboard.writeText(inviteLink.value)
+    .then(() => {
+      // 使用Nuxt UI的toast通知
+      const toast = useToast();
+      toast.add({
+        title: '复制成功',
+        description: '邀请链接已复制到剪贴板',
+        color: 'green'
+      });
+    })
+    .catch(err => {
+      console.error('复制失败:', err);
+      const toast = useToast();
+      toast.add({
+        title: '复制失败',
+        description: '请手动复制链接',
+        color: 'red'
+      });
+    });
+}
 
 // 用户信息
 const userInfo = ref<{
