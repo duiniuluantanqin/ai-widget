@@ -7,6 +7,7 @@
           <div v-if="showSavedTip" class="text-green-600 flex items-center text-xs">
             <UIcon name="i-heroicons-check-circle" class="mr-0.5 h-3 w-3" />
             <span>已保存</span>
+            <span class="text-blue-500 ml-1 cursor-pointer hover:underline" @click="openDownloadDirectory">打开目录</span>
           </div>
           <UButton
             v-if="resultsList.length > 0"
@@ -443,7 +444,7 @@ function toggleResultDetail(index: number) {
 /**
  * 自动保存所有结果到下载目录
  */
-function autoSaveResults() {
+async function autoSaveResults() {
   try {
     // 准备下载内容 - 处理成结构化数据
     const results = resultsList.value
@@ -472,23 +473,28 @@ function autoSaveResults() {
         }
       });
     
-    // 创建Blob对象
-    const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+    // 调用后端API保存结果
+    const response = await fetch('/api/results/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ results })
+    });
     
-    // 创建URL并触发下载
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `code-check-results-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
+    if (!response.ok) {
+      throw new Error(`保存失败: ${response.status} ${response.statusText}`);
+    }
     
-    // 清理
-    URL.revokeObjectURL(url);
+    const data = await response.json();
+    console.log('结果已保存到服务器:', data.filePath);
     
     // 显示已保存提示（不会自动消失）
     showSavedTip.value = true;
   } catch (error) {
     console.error('自动保存结果失败:', error);
+    // 如果后端保存失败，可以考虑回退到前端下载方式
+    downloadResults();
   }
 }
 
@@ -583,6 +589,24 @@ function stopRetryItem(item: CheckResult) {
   console.log('触发终止重试事件:', item.fileName);
   // 触发自定义事件以终止重试
   window.dispatchEvent(new CustomEvent('stop-retry'));
+}
+
+/**
+ * 打开下载目录
+ */
+async function openDownloadDirectory() {
+  try {
+    const response = await fetch('/api/results/open-directory');
+    
+    if (!response.ok) {
+      throw new Error(`打开目录失败: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('已打开目录:', data.directory);
+  } catch (error) {
+    console.error('打开下载目录失败:', error);
+  }
 }
 </script>
 
