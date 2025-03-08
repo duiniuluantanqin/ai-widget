@@ -13,7 +13,7 @@ export function useCodeChecker() {
   const isLoadingModels = ref(false);
   const selectedFiles = ref<File[]>([]);
   const checkResults = ref<CheckResult[]>([]);
-  const currentModelProvider = ref<ModelProvider>('deepseek');
+  const currentModelProvider = ref<ModelProvider>('siliconflow');
   const currentModelId = ref<string>('');
   const currentCheckType = ref<CheckType>('spelling');
   const customPrompt = ref<string>('');
