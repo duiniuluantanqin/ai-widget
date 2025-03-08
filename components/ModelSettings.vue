@@ -87,11 +87,15 @@
             label="BUG检查"
             name="check-bugs"
             class="border border-red-100 dark:border-red-800 rounded-md p-2 hover:bg-red-50 dark:hover:bg-red-900"
+            :disabled="true"
           >
             <template #label>
-              <div class="flex items-center">
-                <UIcon name="i-heroicons-bug-ant" class="mr-2 text-red-500" />
-                <span>BUG检查</span>
+              <div class="flex flex-col">
+                <div class="flex items-center">
+                  <UIcon name="i-heroicons-bug-ant" class="mr-2 text-red-500" />
+                  <span>BUG检查</span>
+                </div>
+                <span class="text-xs text-amber-500 mt-1">即将推出</span>
               </div>
             </template>
           </UCheckbox>
@@ -283,13 +287,7 @@ const props = defineProps({
   },
   parameters: {
     type: Object as () => ModelParameters,
-    default: () => ({
-      temperature: 0.1,
-      top_p: 1.0,
-      max_tokens: 4000,
-      presence_penalty: 0.0,
-      frequency_penalty: 0.0
-    })
+    default: () => ({}) as any
   },
   prompt: {
     type: String,
@@ -309,9 +307,7 @@ const props = defineProps({
   },
   processingConfig: {
     type: Object as () => ProcessingConfig,
-    default: () => ({
-      concurrentTasks: 2
-    })
+    default: () => ({}) as any
   }
 });
 
@@ -332,7 +328,7 @@ function safeNumber(value?: number): number {
 // 确保参数总是有值
 const safeParameters = computed(() => {
   const defaultParams = {
-    temperature: 0.1,
+    temperature: 0.0,
     top_p: 1.0,
     max_tokens: 4000,
     presence_penalty: 0.0,
@@ -388,17 +384,24 @@ const modelIdValue = computed({
 
 // 检查类型多选值
 const checkTypesValue = ref({
-  spelling: props.checkType === 'spelling',
-  bugs: props.checkType === 'bugs'
+  spelling: true,
+  bugs: false
 });
 
 // 参数面板展开状态
-const isParametersOpen = ref(true);
+const isParametersOpen = ref(false);
 // 多线程配置面板展开状态
 const isThreadConfigOpen = ref(true);
 
 // 监听多选值变化，更新checkType
 watch(checkTypesValue, (newVal) => {
+  // BUG检查暂时禁用
+  if (newVal.bugs) {
+    checkTypesValue.value.bugs = false;
+    checkTypesValue.value.spelling = true;
+    return;
+  }
+  
   // 至少保持一项被选中
   if (!newVal.spelling && !newVal.bugs) {
     checkTypesValue.value.spelling = true;
@@ -408,16 +411,20 @@ watch(checkTypesValue, (newVal) => {
   // 当前只支持设置一个类型，取第一个被选中的
   if (newVal.spelling) {
     emit('update:checkType', 'spelling');
-  } else if (newVal.bugs) {
-    emit('update:checkType', 'bugs');
   }
 }, { deep: true });
 
 // 检查类型 - 兼容旧版，当外部checkType变化时更新多选状态
 watch(() => props.checkType, (newType) => {
+  // BUG检查暂时禁用，强制使用拼写检查
+  if (newType === 'bugs') {
+    emit('update:checkType', 'spelling');
+    return;
+  }
+  
   checkTypesValue.value = {
     spelling: newType === 'spelling',
-    bugs: newType === 'bugs'
+    bugs: false // 始终禁用BUG检查
   };
 });
 
@@ -446,7 +453,7 @@ const promptValue = computed({
 
 function resetParameters() {
   parametersValue.value = {
-    temperature: 0.1,
+    temperature: 0.0,
     top_p: 1.0,
     max_tokens: 4000,
     presence_penalty: 0.0,
@@ -455,8 +462,24 @@ function resetParameters() {
 }
 
 // 处理配置
+const safeProcessingConfig = computed(() => {
+  const defaultConfig = {
+    concurrentTasks: 10
+  };
+  
+  if (!props.processingConfig) {
+    return defaultConfig;
+  }
+  
+  return {
+    concurrentTasks: typeof props.processingConfig.concurrentTasks === 'number' 
+      ? props.processingConfig.concurrentTasks 
+      : defaultConfig.concurrentTasks
+  };
+});
+
 const processingConfigValue = computed({
-  get: () => props.processingConfig,
+  get: () => safeProcessingConfig.value,
   set: (value: ProcessingConfig) => emit('update:processingConfig', value)
 });
 
@@ -497,8 +520,12 @@ function updateProcessingConfig(key: keyof ProcessingConfig, event: Event) {
   }
 }
 
-// 组件挂载时获取用户信息
+// 组件挂载时确保使用拼写检查
 onMounted(() => {
+  if (props.checkType === 'bugs') {
+    emit('update:checkType', 'spelling');
+  }
+  
   if (props.model) {
     fetchUserInfo(props.model);
   }

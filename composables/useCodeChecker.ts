@@ -26,7 +26,7 @@ export function useCodeChecker() {
   
   // 模型参数
   const modelParameters = ref<ModelParameters>({
-    temperature: 0.1,
+    temperature: 0.0,
     top_p: 1.0,
     max_tokens: 4000,
     presence_penalty: 0.0,
@@ -35,7 +35,7 @@ export function useCodeChecker() {
   
   // 处理配置
   const processingConfig = ref<ProcessingConfig>({
-    concurrentTasks: 2 // 默认同时处理2个文件
+    concurrentTasks: 10 // 默认同时处理10个文件
   });
 
   // 计算属性
