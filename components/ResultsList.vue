@@ -194,11 +194,21 @@
                 </template>
                 
                 <template #original-data="{ row }">
-                  <div class="bg-gray-50 dark:bg-gray-800 p-1 rounded font-mono text-sm">{{ row.original }}</div>
+                  <div 
+                    class="bg-gray-50 dark:bg-gray-800 p-1 rounded font-mono text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" 
+                    @click="scrollToLine(row.line)"
+                  >
+                    {{ row.original }}
+                  </div>
                 </template>
                 
                 <template #suggestion-data="{ row }">
-                  <div class="bg-green-50 dark:bg-green-900/20 p-1 rounded font-mono text-sm">{{ row.suggestion }}</div>
+                  <div 
+                    class="bg-green-50 dark:bg-green-900/20 p-1 rounded font-mono text-sm cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30" 
+                    @click="scrollToLine(row.line)"
+                  >
+                    {{ row.suggestion }}
+                  </div>
                 </template>
               </UTable>
             </div>
@@ -420,6 +430,15 @@ function scrollToLine(lineNumber: number) {
       const containerHeight = codeContainer.value.clientHeight;
       const lineTop = lineElement.offsetTop;
       codeContainer.value.scrollTop = lineTop - containerHeight / 2;
+      
+      // 移除之前的高亮效果
+      const previousHighlighted = codeContainer.value.querySelector('.active-highlight');
+      if (previousHighlighted) {
+        previousHighlighted.classList.remove('active-highlight');
+      }
+      
+      // 添加持久高亮效果
+      lineElement.parentElement?.classList.add('active-highlight');
       
       // 添加闪烁动画效果
       lineElement.parentElement?.classList.add('flash-highlight');
@@ -669,6 +688,11 @@ async function openDownloadDirectory() {
 <style scoped>
 .flash-highlight {
   animation: flash 2s ease-out;
+}
+
+.active-highlight {
+  background-color: rgba(59, 130, 246, 0.2); /* 蓝色背景，低透明度 */
+  border-left: 3px solid rgb(59, 130, 246); /* 蓝色左边框 */
 }
 
 @keyframes flash {
