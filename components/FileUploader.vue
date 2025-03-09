@@ -126,6 +126,7 @@ const emit = defineEmits<{
   'remove': [index: number];
   'clear': [];
   'size-exceeded': [exceeded: boolean];
+  'total-size-change': [totalSize: number];
 }>();
 
 // 上传组件的引用
@@ -140,19 +141,24 @@ const isSizeExceeded = ref(false);
 // 计算属性，防止直接操作props
 const filesList = computed(() => props.files || []);
 
+// 计算总字节数
+const totalSize = computed(() => calculateTotalSize(filesList.value));
+
 // 监听文件列表变化，计算总大小并更新状态
 watch(filesList, (files) => {
-  const totalSize = calculateTotalSize(files);
-  isSizeExceeded.value = totalSize > MAX_TOTAL_SIZE;
+  const size = calculateTotalSize(files);
+  isSizeExceeded.value = size > MAX_TOTAL_SIZE;
   
   if (isSizeExceeded.value) {
-    sizeError.value = `文件总大小(${formatFileSize(totalSize)})超过限制(${formatFileSize(MAX_TOTAL_SIZE)})，无法进行检查`;
+    sizeError.value = `文件总大小(${formatFileSize(size)})超过限制(${formatFileSize(MAX_TOTAL_SIZE)})，无法进行检查`;
   } else {
     sizeError.value = '';
   }
   
   // 通知父组件大小超限状态
   emit('size-exceeded', isSizeExceeded.value);
+  // 通知父组件文件总大小
+  emit('total-size-change', size);
 }, { immediate: true });
 
 /**

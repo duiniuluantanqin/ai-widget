@@ -66,6 +66,7 @@ export function useCodeChecker() {
         },
         body: JSON.stringify({
           code: codeContent,
+          fileName: fileName,
           checkType: currentCheckType.value,
           modelProvider: currentModelProvider.value,
           modelId: currentModelId.value,
@@ -288,7 +289,7 @@ export function useCodeChecker() {
   }
 
   /**
-   * 终止检查
+   * 终止所有处理
    */
   function stopCheck() {
     if (isProcessing.value) {
@@ -296,7 +297,6 @@ export function useCodeChecker() {
       
       // 中止所有活动的API请求
       activeAbortControllers.forEach((controller, index) => {
-        console.log(`中止文件索引 ${index} 的请求`);
         controller.abort();
       });
       
@@ -313,8 +313,6 @@ export function useCodeChecker() {
       
       // 重置处理状态
       isProcessing.value = false;
-      
-      console.log('用户终止了处理，已中止所有活动请求');
     }
   }
 
@@ -465,6 +463,18 @@ export function useCodeChecker() {
     }
   }
 
+  /**
+   * 终止特定文件的处理
+   * @param index 文件索引
+   */
+  function abortFileProcessing(index: number) {
+    const controller = activeAbortControllers.get(index);
+    if (controller) {
+      controller.abort();
+      activeAbortControllers.delete(index);
+    }
+  }
+
   return {
     // 状态
     isProcessing,
@@ -501,6 +511,7 @@ export function useCodeChecker() {
     setProcessingConfig,
     getState,
     processFilesInParallel,
-    updateCheckResult
+    updateCheckResult,
+    abortFileProcessing
   };
 } 

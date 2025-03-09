@@ -32,6 +32,7 @@ export default defineEventHandler(async (event) => {
     // 提取参数
     const { 
       code, 
+      fileName: requestFileName,
       checkType, 
       modelProvider, 
       modelId,
@@ -39,6 +40,7 @@ export default defineEventHandler(async (event) => {
       parameters 
     } = body as {
       code: string;
+      fileName?: string;
       checkType: CheckType;
       modelProvider: ModelProvider;
       modelId?: string;
@@ -126,18 +128,59 @@ export default defineEventHandler(async (event) => {
     // 获取最终使用的提示词
     const actualPrompt = prompt || DEFAULT_PROMPTS[checkType];
     
-    // 打印请求和提示词信息，用于调试
-    console.log('---- 代码检查请求 ----');
-    console.log(`请求ID: ${requestId}`);
-    console.log(`模型提供者: ${modelProvider}`);
-    console.log(`模型ID: ${modelName}`);
-    console.log(`检查类型: ${checkType}`);
-    console.log(`参数: ${JSON.stringify(parameters)}`);
-    console.log('\n---- 完整提示词 ----');
-    console.log(actualPrompt);
-    console.log('\n---- 代码内容 (前50个字符) ----');
-    console.log(code.substring(0, 50) + (code.length > 50 ? '...' : ''));
-    console.log('------------------------');
+    // 获取文件名（从请求体中提取）
+    const fileName = requestFileName || '未知文件';
+    
+    // 将文件名保存到本地日志文件
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      
+      // 使用项目根目录作为基准
+      const rootDir = process.cwd();
+      
+      // 创建日志目录路径
+      let logDir = path.join(rootDir, 'logs');
+      
+      // 确保日志目录存在
+      if (!fs.existsSync(logDir)) {
+        try {
+          fs.mkdirSync(logDir, { recursive: true });
+        } catch (mkdirError) {
+          // 尝试使用临时目录
+          const tmpDir = path.join(os.tmpdir(), 'code-checker-logs');
+          fs.mkdirSync(tmpDir, { recursive: true });
+          logDir = tmpDir;
+        }
+      }
+      
+      // 创建日志文件路径
+      const logFile = path.join(logDir, 'code_check.log');
+      
+      // 创建日志条目
+      const timestamp = new Date().toISOString();
+      const logEntry = `${timestamp} | ${requestId} | ${fileName} | ${modelProvider} | ${modelName}\n`;
+      
+      // 追加到日志文件
+      fs.appendFileSync(logFile, logEntry);
+    } catch (logError) {
+      // 尝试使用备用方法记录
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const os = require('os');
+        
+        const backupLogPath = path.join(os.tmpdir(), 'code_checker_backup.log');
+        
+        const timestamp = new Date().toISOString();
+        const logEntry = `${timestamp} | ${requestId} | ${fileName} | ${modelProvider} | ${modelName}\n`;
+        
+        fs.appendFileSync(backupLogPath, logEntry);
+      } catch (backupError) {
+        // 忽略备用日志写入失败
+      }
+    }
     
     // 执行代码检查，添加超时处理
     const modelPromise = model.checkCode(
@@ -151,11 +194,6 @@ export default defineEventHandler(async (event) => {
     
     // 使用Promise.race在超时和模型响应之间竞争
     const results = await Promise.race([modelPromise, timeoutPromise]) as string;
-    
-    // 打印模型返回的原始结果，用于调试
-    console.log('\n---- 模型原始返回结果 ----');
-    console.log(results);
-    console.log('------------------------');
     
     // 尝试验证结果是否为有效JSON，但即使不是也返回原始结果
     let formattedResults = results;

@@ -56,19 +56,27 @@
                 @remove="handleRemoveFile"
                 @clear="handleClearFiles"
                 @size-exceeded="handleSizeExceeded"
+                @total-size-change="handleTotalSizeChange"
               />
               
               <!-- 开始检查按钮 -->
-              <UButton
-                block
-                color="blue"
-                size="lg"
-                :loading="state.isProcessing"
-                :disabled="!state.hasFiles || state.isProcessing || !state.currentModelId || isSizeExceeded"
-                @click="handleStartCheck"
-              >
-                {{ state.isProcessing ? '处理中...' : (isSizeExceeded ? '文件大小超限' : '开始检查') }}
-              </UButton>
+              <div class="flex flex-col">
+                <UButton
+                  block
+                  color="blue"
+                  size="lg"
+                  :loading="state.isProcessing"
+                  :disabled="!state.hasFiles || state.isProcessing || !state.currentModelId || isSizeExceeded"
+                  @click="handleStartCheck"
+                >
+                  <div class="flex items-center justify-center w-full">
+                    <span>{{ state.isProcessing ? '处理中...' : (isSizeExceeded ? '文件大小超限' : '开始检查') }}</span>
+                    <span v-if="totalFileSize > 0 && !state.isProcessing && !isSizeExceeded" class="text-xs opacity-80 ml-2">
+                      (预计花费: {{ estimatedCost }}元)
+                    </span>
+                  </div>
+                </UButton>
+              </div>
             </div>
           </div>
           
@@ -94,7 +102,7 @@
 import { useCodeChecker } from '~/composables/useCodeChecker';
 import { useToast as useNuxtToast } from '#imports';
 import type { ModelProvider, CheckType, ModelParameters, ProcessingConfig, CheckResult } from '~/types';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { FileUtils } from '~/utils/file-utils';
 
 const codeChecker = useCodeChecker();
@@ -106,6 +114,16 @@ let updateTimerId: number | null = null;
 const apiError = ref('');
 // 文件大小是否超出限制
 const isSizeExceeded = ref(false);
+// 文件总大小（字节）
+const totalFileSize = ref(0);
+
+// 计算预计花费（元）
+const estimatedCost = computed(() => {
+  // 每百万字节花费4元，再乘以3
+  const costPerMillion = 4 * 10;
+  // 计算花费（保留4位小数）
+  return Number(((totalFileSize.value / 1000000) * costPerMillion).toFixed(4));
+});
 
 // 定期更新状态
 function updateState() {
@@ -156,11 +174,9 @@ function updateFiles(files: File[]) {
       }
     });
     
-    console.log('文件已添加:', processedFiles.length, '个文件');
+    // 更新状态
+    state.value = codeChecker.getState();
   }
-  
-  // 更新状态
-  state.value = codeChecker.getState();
 }
 
 // 移除文件
@@ -208,16 +224,13 @@ async function handleStopCheck() {
     }
     
     const data = await response.json();
-    console.log('终止所有请求结果:', data.message);
   } catch (error) {
-    console.error('终止所有请求失败:', error);
+    console.error('终止请求失败:', error);
   }
 }
 
 // 添加重试处理方法
 async function retryItem(item: CheckResult) {
-  console.log('接收到重试请求:', item.fileName, '当前状态:', item.status);
-  
   // 创建AbortController用于可能的中止
   const controller = new AbortController();
   // 存储当前重试的项目索引和控制器
@@ -229,7 +242,6 @@ async function retryItem(item: CheckResult) {
       r.fileName === item.fileName
     );
     
-    console.log('找到索引:', index);
     currentRetryIndex = index;
     
     if (index !== -1) {
@@ -241,17 +253,13 @@ async function retryItem(item: CheckResult) {
       
       // 更新本地状态
       state.value = codeChecker.getState();
-      
-      console.log('状态已更新为处理中');
     } else {
-      console.warn('未找到要重试的项目');
       return;
     }
     
     // 检查文件内容是否存在，如果不存在则重新读取
     let fileContent = item.content;
     if (!fileContent) {
-      console.log('文件内容为空，尝试重新读取文件');
       // 查找对应的文件
       const file = state.value.selectedFiles.find(f => f.name === item.fileName);
       if (file) {
@@ -262,7 +270,6 @@ async function retryItem(item: CheckResult) {
           reader.onerror = reject;
           reader.readAsText(file);
         });
-        console.log('成功读取文件内容，长度:', fileContent.length);
       } else {
         throw new Error('找不到对应的文件');
       }
@@ -277,11 +284,8 @@ async function retryItem(item: CheckResult) {
       customPrompt: state.value.customPrompt
     };
     
-    console.log('准备发送请求，模型设置:', modelSettings);
-    
     // 添加终止处理的事件处理
     const stopRetryHandler = () => {
-      console.log('用户终止了重试处理');
       controller.abort();
       
       // 更新状态为已终止
@@ -311,6 +315,7 @@ async function retryItem(item: CheckResult) {
       },
       body: JSON.stringify({
         code: fileContent, // 使用重新读取的文件内容
+        fileName: item.fileName, // 添加文件名
         checkType: state.value.currentCheckType,
         modelProvider: state.value.currentModelProvider,
         modelId: state.value.currentModelId,
@@ -329,14 +334,11 @@ async function retryItem(item: CheckResult) {
     // 移除事件监听器
     window.removeEventListener('stop-retry', stopRetryHandler);
     
-    console.log('收到响应状态:', response.status);
-    
     if (!response.ok) {
       throw new Error(`请求失败: ${response.status}`);
     }
     
     const result = await response.json();
-    console.log('解析响应结果:', result);
     
     // 更新结果
     if (index !== -1) {
@@ -351,8 +353,6 @@ async function retryItem(item: CheckResult) {
       
       // 更新本地状态
       state.value = codeChecker.getState();
-      
-      console.log('状态已更新为成功');
     }
     
     // 显示成功消息
@@ -363,8 +363,6 @@ async function retryItem(item: CheckResult) {
       color: 'green'
     });
   } catch (error) {
-    console.error('重试失败:', error);
-    
     // 移除事件监听器
     window.removeEventListener('stop-retry', () => {});
     
@@ -385,8 +383,6 @@ async function retryItem(item: CheckResult) {
       
       // 更新本地状态
       state.value = codeChecker.getState();
-      
-      console.log('状态已更新为失败');
     }
     
     // 显示错误消息，除非是中止错误
@@ -404,6 +400,11 @@ async function retryItem(item: CheckResult) {
 // 处理文件大小超限事件
 function handleSizeExceeded(exceeded: boolean) {
   isSizeExceeded.value = exceeded;
+}
+
+// 处理文件总大小变化事件
+function handleTotalSizeChange(size: number) {
+  totalFileSize.value = size;
 }
 
 // 启动状态更新并加载模型列表
