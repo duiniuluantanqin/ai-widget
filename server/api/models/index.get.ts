@@ -85,19 +85,28 @@ export default defineEventHandler(async (event) => {
         const modelsResponse = await siliconflowClient.models.list();
         
         // 转换为我们的模型格式 - 简化信息
-        const models: ModelInfo[] = modelsResponse.data.map(model => ({
+        const allModels: ModelInfo[] = modelsResponse.data.map(model => ({
           id: model.id,
           name: model.id  // 仅保留基本信息
         }));
+        
+        // 过滤模型，只保留 deepseek-ai 和 Qwen 开头的模型
+        const filteredModels = allModels.filter(model => 
+          model.id.startsWith('deepseek-ai') || model.id.startsWith('Qwen')
+        );
         
         // 添加到提供商列表
         providers.push({
           id: 'siliconflow',
           name: 'Silicon Flow',
-          models: models.length > 0 ? models : [
+          models: filteredModels.length > 0 ? filteredModels : [
             {
-              id: 'internlm2-chat-7b',
-              name: 'InternLM2 Chat'
+              id: 'deepseek-ai-chat',
+              name: 'DeepSeek AI Chat'
+            },
+            {
+              id: 'Qwen-max',
+              name: 'Qwen Max'
             }
           ]
         });
@@ -110,8 +119,12 @@ export default defineEventHandler(async (event) => {
           name: 'Silicon Flow',
           models: [
             {
-              id: 'internlm2-chat-7b',
-              name: 'InternLM2 Chat'
+              id: 'deepseek-ai-chat',
+              name: 'DeepSeek AI Chat'
+            },
+            {
+              id: 'Qwen-max',
+              name: 'Qwen Max'
             }
           ]
         });
@@ -137,8 +150,12 @@ export default defineEventHandler(async (event) => {
           name: 'Silicon Flow (示例)',
           models: [
             {
-              id: 'internlm2-chat-7b',
-              name: 'InternLM2 Chat'
+              id: 'deepseek-ai-chat',
+              name: 'DeepSeek AI Chat'
+            },
+            {
+              id: 'Qwen-max',
+              name: 'Qwen Max'
             }
           ]
         }

@@ -2,7 +2,17 @@
   <UCard class="mb-4 border-blue-100 dark:border-blue-900 shadow-sm">
     <template #header>
       <div class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -mx-4 -mt-4 px-4 py-3 rounded-t-lg">
-        <h3 class="text-lg font-medium text-blue-800 dark:text-blue-300">模型与检查设置</h3>
+        <div class="flex items-center">
+          <h3 class="text-lg font-medium text-blue-800 dark:text-blue-300">模型与检查设置</h3>
+          <UButton
+            variant="link"
+            size="xs"
+            class="text-red-500 hover:text-red-700 font-medium ml-2"
+            @click="showRechargeModal = true"
+          >
+            薅羊毛
+          </UButton>
+        </div>
         <UTooltip text="模型参数会影响检查结果的质量和风格">
           <UButton
             color="blue"
@@ -23,14 +33,6 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">厂商</label>
             <div class="flex items-center">
               <UBadge v-if="isLoading" color="blue" size="sm">加载中...</UBadge>
-              <UButton
-                variant="link"
-                size="xs"
-                class="text-blue-500 hover:text-blue-700"
-                @click="showRechargeModal = true"
-              >
-                薅羊毛
-              </UButton>
             </div>
           </div>
           <USelect
@@ -69,6 +71,10 @@
             class="w-full"
             placeholder="选择模型"
           />
+          <div v-if="modelProviderValue === 'siliconflow'" class="mt-1 text-xs text-gray-600 dark:text-gray-400 flex items-center">
+            <UIcon name="i-heroicons-star" class="mr-1 h-3 w-3 text-amber-500" />
+            <span>推荐Qwen/QwQ-32B</span>
+          </div>
         </div>
       </div>
       
