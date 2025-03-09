@@ -67,6 +67,16 @@ export default defineEventHandler(async (event) => {
       });
     }
     
+    // 检查代码大小限制 (10KB)
+    const MAX_CODE_SIZE = 10 * 1024; // 10KB
+    const codeSize = Buffer.from(code).length;
+    if (codeSize > MAX_CODE_SIZE) {
+      throw createError({
+        statusCode: 413, // Payload Too Large
+        statusMessage: `代码内容大小(${formatFileSize(codeSize)})超过限制(${formatFileSize(MAX_CODE_SIZE)})，无法进行检查`
+      });
+    }
+    
     if (!checkType) {
       throw createError({
         statusCode: 400,
@@ -227,4 +237,15 @@ export default defineEventHandler(async (event) => {
       });
     }
   }
-}); 
+});
+
+// 添加文件大小格式化函数
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+} 

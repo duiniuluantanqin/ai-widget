@@ -80,10 +80,15 @@ export function useCodeChecker() {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.statusMessage || 
-          `API请求失败: ${response.status} ${response.statusText}`
-        );
+        const errorMessage = errorData?.statusMessage || `API请求失败: ${response.status} ${response.statusText}`;
+        
+        // 特殊处理文件大小超限错误
+        if (response.status === 413) {
+          console.error(`文件 ${fileName} 大小超限:`, errorMessage);
+          throw new Error(errorMessage);
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
