@@ -55,6 +55,7 @@
                 @update:files="updateFiles"
                 @remove="handleRemoveFile"
                 @clear="handleClearFiles"
+                @size-exceeded="handleSizeExceeded"
               />
               
               <!-- 开始检查按钮 -->
@@ -63,10 +64,10 @@
                 color="blue"
                 size="lg"
                 :loading="state.isProcessing"
-                :disabled="!state.hasFiles || state.isProcessing || !state.currentModelId"
+                :disabled="!state.hasFiles || state.isProcessing || !state.currentModelId || isSizeExceeded"
                 @click="handleStartCheck"
               >
-                {{ state.isProcessing ? '处理中...' : '开始检查' }}
+                {{ state.isProcessing ? '处理中...' : (isSizeExceeded ? '文件大小超限' : '开始检查') }}
               </UButton>
             </div>
           </div>
@@ -103,6 +104,8 @@ const state = ref(codeChecker.getState());
 let updateTimerId: number | null = null;
 // API错误信息
 const apiError = ref('');
+// 文件大小是否超出限制
+const isSizeExceeded = ref(false);
 
 // 定期更新状态
 function updateState() {
@@ -396,6 +399,11 @@ async function retryItem(item: CheckResult) {
       });
     }
   }
+}
+
+// 处理文件大小超限事件
+function handleSizeExceeded(exceeded: boolean) {
+  isSizeExceeded.value = exceeded;
 }
 
 // 启动状态更新并加载模型列表

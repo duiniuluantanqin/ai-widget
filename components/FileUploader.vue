@@ -24,9 +24,18 @@
           :model-value="filesList"
           @update:model-value="handleFileSelect"
           label="上传源代码文件"
-          help="支持多种编程语言文件，支持多选"
+          help="支持多种编程语言文件，支持多选，总大小不超过10KB"
         />
       </div>
+      
+      <!-- 显示文件大小错误信息 -->
+      <UAlert
+        v-if="sizeError"
+        color="red"
+        :title="sizeError"
+        icon="i-heroicons-exclamation-triangle"
+        class="mb-4"
+      />
       
       <template v-if="filesList.length > 0">
         <div class="space-y-2 mt-4">
@@ -59,6 +68,14 @@
               />
             </li>
           </ul>
+          
+          <!-- 显示文件总大小 -->
+          <div class="text-sm text-right mt-2">
+            总大小: <span :class="calculateTotalSize(filesList) > MAX_TOTAL_SIZE ? 'text-red-500 font-bold' : 'text-green-600'">
+              {{ formatFileSize(calculateTotalSize(filesList)) }}
+            </span>
+            <span class="text-gray-500 ml-1">(限制: {{ formatFileSize(MAX_TOTAL_SIZE) }})</span>
+          </div>
           
           <!-- 添加拖放区域，允许继续上传 -->
           <div 
@@ -95,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   files: {
@@ -108,13 +125,35 @@ const emit = defineEmits<{
   'update:files': [files: File[]];
   'remove': [index: number];
   'clear': [];
+  'size-exceeded': [exceeded: boolean];
 }>();
 
 // 上传组件的引用
 const uploader = ref();
+// 文件大小限制（10KB）
+const MAX_TOTAL_SIZE = 10 * 1024;
+// 错误信息
+const sizeError = ref('');
+// 是否超出大小限制
+const isSizeExceeded = ref(false);
 
 // 计算属性，防止直接操作props
 const filesList = computed(() => props.files || []);
+
+// 监听文件列表变化，计算总大小并更新状态
+watch(filesList, (files) => {
+  const totalSize = calculateTotalSize(files);
+  isSizeExceeded.value = totalSize > MAX_TOTAL_SIZE;
+  
+  if (isSizeExceeded.value) {
+    sizeError.value = `文件总大小(${formatFileSize(totalSize)})超过限制(${formatFileSize(MAX_TOTAL_SIZE)})，无法进行检查`;
+  } else {
+    sizeError.value = '';
+  }
+  
+  // 通知父组件大小超限状态
+  emit('size-exceeded', isSizeExceeded.value);
+}, { immediate: true });
 
 /**
  * 打开文件选择对话框
@@ -146,6 +185,13 @@ function onFileDrop(event: DragEvent) {
 }
 
 /**
+ * 计算文件总大小
+ */
+function calculateTotalSize(files: File[]): number {
+  return files.reduce((total, file) => total + file.size, 0);
+}
+
+/**
  * 处理文件选择
  */
 function handleFileSelect(files: File[]) {
@@ -169,8 +215,10 @@ function handleFileSelect(files: File[]) {
     }
   });
   
-  // 更新文件列表
+  // 更新文件列表 - 无论大小是否超限都更新文件列表
   emit('update:files', combinedFiles);
+  
+  // 大小检查由watch监听器处理，这里不需要额外处理
 }
 
 /**
