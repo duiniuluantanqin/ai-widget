@@ -1,17 +1,9 @@
 <template>
-  <UCard class="mb-4 border-blue-100 dark:border-blue-900 shadow-sm">
+  <UCard class="mb-3 border-blue-100 dark:border-blue-900 shadow-sm">
     <template #header>
-      <div class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -mx-4 -mt-4 px-4 py-3 rounded-t-lg">
+      <div class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -mx-4 -mt-4 px-3 py-2 rounded-t-lg">
         <div class="flex items-center">
           <h3 class="text-lg font-medium text-blue-800 dark:text-blue-300">模型与检查设置</h3>
-          <UButton
-            variant="link"
-            size="xs"
-            class="text-red-500 hover:text-red-700 font-medium ml-2"
-            @click="showRechargeModal = true"
-          >
-            薅羊毛
-          </UButton>
         </div>
         <UTooltip text="模型参数会影响检查结果的质量和风格">
           <UButton
@@ -24,9 +16,9 @@
       </div>
     </template>
     
-    <div class="space-y-5 pt-2">
+    <div class="space-y-3 pt-2">
       <!-- 模型提供商和模型选择 -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <!-- 模型提供商选择 -->
         <div>
           <div class="flex justify-between mb-1">
@@ -88,7 +80,7 @@
             v-model="checkTypesValue.spelling"
             label="拼写检查"
             name="check-spelling" 
-            class="border border-blue-100 dark:border-blue-800 rounded-md p-2 hover:bg-blue-50 dark:hover:bg-blue-900"
+            class="border border-blue-100 dark:border-blue-800 rounded-md p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900"
           >
             <template #label>
               <div class="flex items-center">
@@ -102,7 +94,7 @@
             v-model="checkTypesValue.bugs"
             label="BUG检查"
             name="check-bugs"
-            class="border border-red-100 dark:border-red-800 rounded-md p-2 hover:bg-red-50 dark:hover:bg-red-900"
+            class="border border-red-100 dark:border-red-800 rounded-md p-1.5 hover:bg-red-50 dark:hover:bg-red-900"
             :disabled="true"
           >
             <template #label>
@@ -125,7 +117,7 @@
       <!-- 模型参数 -->
       <div class="border border-indigo-100 dark:border-indigo-900 rounded-md mt-2 overflow-hidden">
         <div 
-          class="flex justify-between items-center p-3 cursor-pointer bg-indigo-50 dark:bg-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-800"
+          class="flex justify-between items-center p-2 cursor-pointer bg-indigo-50 dark:bg-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-800"
           @click="isParametersOpen = !isParametersOpen"
         >
           <div class="flex items-center">
@@ -138,7 +130,7 @@
           />
         </div>
           
-        <div v-if="isParametersOpen" class="p-3 space-y-3 bg-white dark:bg-gray-900">
+        <div v-if="isParametersOpen" class="p-2 space-y-3 bg-white dark:bg-gray-900">
           <!-- 随机性 (temperature) -->
           <div class="grid grid-cols-2 gap-3 items-center">
             <div>
@@ -242,9 +234,9 @@
       </div>
       
       <!-- 多线程处理配置 -->
-      <div class="border border-green-100 dark:border-green-900 rounded-md mt-4 overflow-hidden">
+      <div class="border border-green-100 dark:border-green-900 rounded-md mt-3 overflow-hidden">
         <div 
-          class="flex justify-between items-center p-3 cursor-pointer bg-green-50 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800"
+          class="flex justify-between items-center p-2 cursor-pointer bg-green-50 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800"
           @click="isThreadConfigOpen = !isThreadConfigOpen"
         >
           <div class="flex items-center">
@@ -257,7 +249,7 @@
           />
         </div>
           
-        <div v-if="isThreadConfigOpen" class="p-3 space-y-3 bg-white dark:bg-gray-900">
+        <div v-if="isThreadConfigOpen" class="p-2 space-y-3 bg-white dark:bg-gray-900">
           <!-- 线程数 -->
           <div class="grid grid-cols-2 gap-3 items-center">
             <div>

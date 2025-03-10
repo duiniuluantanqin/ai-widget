@@ -22,12 +22,12 @@
       </div>
     </template>
     
-    <div v-if="resultsList.length === 0" class="p-8 text-center text-gray-500">
+    <div v-if="resultsList.length === 0" class="p-6 text-center text-gray-500">
       <UIcon name="i-heroicons-clipboard-document-check" class="text-3xl mb-2" />
       <p>检查结果将在这里显示</p>
     </div>
     
-    <div v-else class="space-y-4">
+    <div v-else class="space-y-3">
       <!-- 处理中状态显示 -->
       <template v-if="hasProcessingFiles">
         <UAlert
@@ -35,7 +35,7 @@
           title="正在处理中"
           icon="i-heroicons-clock"
           :description="`正在处理 ${processingCount} 个文件（${concurrentTasks}线程并行），请稍候...`"
-          class="mb-4"
+          class="mb-3"
         >
           <template #description>
             <div class="flex justify-between items-center">

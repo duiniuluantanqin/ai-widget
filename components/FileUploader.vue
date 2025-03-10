@@ -1,6 +1,6 @@
 <template>
   <div class="w-full">
-    <UCard class="mb-4">
+    <UCard class="mb-3">
       <template #header>
         <div class="flex justify-between items-center">
           <h3 class="text-lg font-medium">上传文件</h3>
@@ -16,7 +16,7 @@
         </div>
       </template>
       
-      <div class="mb-4">
+      <div class="mb-3">
         <UUpload
           ref="uploader"
           :multiple="true"

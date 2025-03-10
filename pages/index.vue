@@ -1,16 +1,11 @@
 <template>
-  <div class="container mx-auto px-4 py-8">
+  <div class="container mx-auto px-2 py-4">
     <UContainer>
       <div class="flex flex-col">
-        <div class="text-center mb-8">
-          <h1 class="text-3xl font-bold mb-2">代码检查工具</h1>
-          <p class="text-gray-600 dark:text-gray-400">基于大语言模型的代码质量检查工具</p>
-        </div>
-        
         <!-- API错误提示 -->
         <UAlert
           v-if="apiError"
-          class="mb-4"
+          class="mb-3"
           color="red"
           title="API连接错误"
           :description="apiError"
@@ -26,7 +21,7 @@
           </template>
         </UAlert>
         
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <!-- 左侧设置面板 -->
           <div class="lg:col-span-4">
             <div class="sticky top-4 space-y-4">
