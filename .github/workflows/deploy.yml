@@ -1,0 +1,82 @@
+name: 自动部署流水线
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: 获取Tag名称
+        id: get_tag
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: 设置Node.js环境
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建应用
+        run: npm run build
+
+      - name: 部署到服务器
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            # 设置错误处理
+            set -e
+            
+            # 进入应用目录
+            cd /home/admin/code-checker
+            
+            # 备份当前.env文件（如果存在）
+            if [ -f .env ]; then
+              cp .env .env.backup
+            fi
+            
+            # 拉取最新代码
+            echo "正在拉取最新代码..."
+            git fetch --tags
+            git checkout ${{ steps.get_tag.outputs.TAG }}
+            
+            # 安装依赖
+            echo "正在安装依赖..."
+            npm ci
+            
+            # 构建应用
+            echo "正在构建应用..."
+            npm run build
+            
+            # 创建或更新.env文件
+            echo "正在更新环境变量..."
+            cat > .env << EOL
+            DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}
+            DEEPSEEK_API_URL=${{ secrets.DEEPSEEK_API_URL }}
+            SILICONFLOW_API_KEY=${{ secrets.SILICONFLOW_API_KEY }}
+            SILICONFLOW_API_URL=${{ secrets.SILICONFLOW_API_URL }}
+            MAX_FILE_SIZE_KB=${{ secrets.MAX_FILE_SIZE_KB }}
+            EOL
+            
+            # 使用PM2重启或启动应用
+            echo "正在重启应用..."
+            if pm2 list | grep -q "nuxt-app"; then
+              pm2 reload nuxt-app
+            else
+              pm2 start .output/server/index.mjs --name "nuxt-app"
+            fi
+            
+            echo "部署完成！当前版本: ${{ steps.get_tag.outputs.TAG }}" 
