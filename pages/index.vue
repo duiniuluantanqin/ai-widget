@@ -119,8 +119,8 @@ const totalFileSize = ref(0);
 
 // 计算预计花费（元）
 const estimatedCost = computed(() => {
-  // 每百万字节花费4元，再乘以3
-  const costPerMillion = 4 * 10;
+  // 每百万字节花费4元，再乘以5
+  const costPerMillion = 4 * 5;
   // 计算花费（保留4位小数）
   return Number(((totalFileSize.value / 1000000) * costPerMillion).toFixed(4));
 });
