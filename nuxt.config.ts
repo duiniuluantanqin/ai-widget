@@ -11,7 +11,8 @@ export default defineNuxtConfig({
     siliconflowApiUrl: process.env.SILICONFLOW_API_URL || 'https://api.siliconflow.com',
     // 客户端可访问的密钥
     public: {
-      apiBase: '/api'
+      apiBase: '/api',
+      maxFileSizeKB: parseInt(process.env.MAX_FILE_SIZE_KB || '10')
     }
   },
   // 路由选项

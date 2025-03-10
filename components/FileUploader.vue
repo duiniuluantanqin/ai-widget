@@ -3,7 +3,18 @@
     <UCard class="mb-3">
       <template #header>
         <div class="flex justify-between items-center">
-          <h3 class="text-lg font-medium">上传文件</h3>
+          <div class="flex items-center">
+            <h3 class="text-lg font-medium">上传文件</h3>
+            <UTooltip :text="`文件总大小限制为 ${formatFileSize(MAX_TOTAL_SIZE)}，超过限制将无法进行检查`">
+              <UButton
+                color="blue"
+                variant="ghost"
+                icon="i-heroicons-information-circle"
+                size="xs"
+                class="ml-1"
+              />
+            </UTooltip>
+          </div>
           <UButton
             v-if="filesList.length > 0"
             color="red"
@@ -24,7 +35,7 @@
           :model-value="filesList"
           @update:model-value="handleFileSelect"
           label="上传源代码文件"
-          help="支持多种编程语言文件，支持多选，总大小不超过10KB"
+          :help="`支持多种编程语言文件，支持多选，总大小不超过${Number(config.public.maxFileSizeKB) || 10}KB`"
         />
       </div>
       
@@ -113,6 +124,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRuntimeConfig } from 'nuxt/app';
 
 const props = defineProps({
   files: {
@@ -131,8 +143,10 @@ const emit = defineEmits<{
 
 // 上传组件的引用
 const uploader = ref();
-// 文件大小限制（10KB）
-const MAX_TOTAL_SIZE = 10 * 1024;
+// 获取运行时配置
+const config = useRuntimeConfig();
+// 文件大小限制（从环境变量读取，默认10KB）
+const MAX_TOTAL_SIZE = (Number(config.public.maxFileSizeKB) || 10) * 1024;
 // 错误信息
 const sizeError = ref('');
 // 是否超出大小限制
