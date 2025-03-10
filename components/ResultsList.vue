@@ -100,6 +100,7 @@
           <UBadge v-if="row.status === 'pending'" color="gray">等待中</UBadge>
           <UBadge v-else-if="row.status === 'processing'" color="blue">处理中</UBadge>
           <UBadge v-else-if="row.status === 'success'" color="green">成功</UBadge>
+          <UBadge v-else-if="row.status === 'error' && row.error === '模型返回的结果不是有效的JSON格式'" color="amber">异常</UBadge>
           <UBadge v-else-if="row.status === 'error' || row.status === 'failed'" color="red">失败</UBadge>
         </template>
         
@@ -108,12 +109,15 @@
             <UBadge v-if="getFileSuggestionCount(row) > 0" color="amber">{{ getFileSuggestionCount(row) }}</UBadge>
             <span v-else class="text-green-600">无需改进</span>
           </div>
+          <div v-else-if="row.status === 'error' && row.results && row.error === '模型返回的结果不是有效的JSON格式'" class="text-center">
+            <UBadge color="amber">格式异常</UBadge>
+          </div>
           <div v-else>-</div>
         </template>
         
         <template #actions-data="{ row, index }">
           <UButton
-            v-if="row.status === 'success'"
+            v-if="row.status === 'success' || (row.status === 'error' && row.results && row.error === '模型返回的结果不是有效的JSON格式')"
             color="blue"
             variant="ghost"
             icon="i-heroicons-eye"
@@ -123,7 +127,7 @@
             查看结果
           </UButton>
           <UButton
-            v-if="row.status === 'success'"
+            v-if="row.status === 'success' || (row.status === 'error' && row.results && row.error === '模型返回的结果不是有效的JSON格式')"
             color="blue"
             variant="soft"
             icon="i-heroicons-arrow-path"
@@ -134,7 +138,6 @@
             重新检查
           </UButton>
           <div v-else-if="row.status === 'processing'" class="flex items-center">
-            <span class="text-sm text-blue-500 mr-2">处理中...</span>
             <UButton
               color="red"
               variant="soft"
@@ -467,7 +470,7 @@ async function autoSaveResults() {
   try {
     // 准备下载内容 - 处理成结构化数据
     const results = resultsList.value
-      .filter(r => r.status === 'success')
+      .filter(r => r.status === 'success' || (r.status === 'error' && r.results && r.error === '模型返回的结果不是有效的JSON格式'))
       .map(r => {
         // 尝试解析JSON结果
         let parsedItems = [];
@@ -488,7 +491,8 @@ async function autoSaveResults() {
           checkType: r.checkType,
           modelProvider: r.modelProvider,
           results: isJson ? parsedItems : r.results, // 如果解析失败，返回原始文本
-          isJsonFormat: isJson
+          isJsonFormat: isJson,
+          status: r.status
         }
       });
     
@@ -524,7 +528,7 @@ function downloadResults() {
   try {
     // 准备下载内容 - 处理成结构化数据
     const results = resultsList.value
-      .filter(r => r.status === 'success')
+      .filter(r => r.status === 'success' || (r.status === 'error' && r.results && r.error === '模型返回的结果不是有效的JSON格式'))
       .map(r => {
         // 尝试解析JSON结果
         let parsedItems = [];
@@ -545,7 +549,8 @@ function downloadResults() {
           checkType: r.checkType,
           modelProvider: r.modelProvider,
           results: isJson ? parsedItems : r.results, // 如果解析失败，返回原始文本
-          isJsonFormat: isJson
+          isJsonFormat: isJson,
+          status: r.status
         }
       });
     

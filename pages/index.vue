@@ -342,8 +342,8 @@ async function retryItem(item: CheckResult) {
         content: fileContent, // 更新文件内容
         results: result.results,
         isValidJson: result.isValidJson,
-        status: 'success',
-        error: undefined
+        status: result.isValidJson ? 'success' : 'error',
+        error: result.isValidJson ? undefined : '模型返回的结果不是有效的JSON格式'
       });
       
       // 更新本地状态

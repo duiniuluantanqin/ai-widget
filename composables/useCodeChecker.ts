@@ -167,7 +167,8 @@ export function useCodeChecker() {
         results,
         isValidJson,
         requestId,
-        status: 'success'
+        status: isValidJson ? 'success' : 'error',
+        error: isValidJson ? undefined : '模型返回的结果不是有效的JSON格式'
       };
     } catch (error) {
       // 处理错误
