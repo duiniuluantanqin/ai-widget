@@ -4,15 +4,16 @@
       <div class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -mx-4 -mt-4 px-3 py-2 rounded-t-lg">
         <div class="flex items-center">
           <h3 class="text-lg font-medium text-blue-800 dark:text-blue-300">模型与检查设置</h3>
+          <UTooltip text="模型参数会影响检查结果的质量和风格">
+            <UButton
+              color="blue"
+              variant="ghost"
+              icon="i-heroicons-information-circle"
+              size="xs"
+              class="ml-1"
+            />
+          </UTooltip>
         </div>
-        <UTooltip text="模型参数会影响检查结果的质量和风格">
-          <UButton
-            color="blue"
-            variant="ghost"
-            icon="i-heroicons-information-circle"
-            size="xs"
-          />
-        </UTooltip>
       </div>
     </template>
     
