@@ -54,32 +54,29 @@
         </UAlert>
       </template>
       
-      <!-- 处理完成提示 -->
-      <template v-if="isAllProcessed && hasSuccessFiles">
+      <!-- 处理完成提示（整合成功和失败的汇总信息） -->
+      <template v-if="isAllProcessed">
         <UAlert
-          color="green"
-          title="处理完成"
-          icon="i-heroicons-check-circle"
+          :color="hasErrorFiles ? (hasSuccessFiles ? 'amber' : 'red') : 'green'"
+          :title="hasErrorFiles ? (hasSuccessFiles ? '处理部分完成' : '处理失败') : '处理完成'"
+          :icon="hasErrorFiles ? (hasSuccessFiles ? 'i-heroicons-exclamation-triangle' : 'i-heroicons-x-circle') : 'i-heroicons-check-circle'"
           class="mb-4"
         >
           <template #description>
             <div>
-              <p>成功处理 {{ successCount }} 个文件，共发现 {{ totalSuggestions }} 条改进建议。</p>
-              <p v-if="totalSuggestions === 0" class="text-sm mt-1">未发现需要改进的地方，代码质量良好！</p>
+              <p v-if="hasSuccessFiles && hasErrorFiles">
+                成功处理 {{ successCount }} 个文件，{{ errorCount }} 个文件处理失败，共发现 {{ totalSuggestions }} 条改进建议。
+              </p>
+              <p v-else-if="hasSuccessFiles">
+                成功处理 {{ successCount }} 个文件，共发现 {{ totalSuggestions }} 条改进建议。
+              </p>
+              <p v-else-if="hasErrorFiles">
+                {{ errorCount }} 个文件处理失败。
+              </p>
+              <p v-if="hasSuccessFiles && totalSuggestions === 0" class="text-sm mt-1">未发现需要改进的地方，代码质量良好！</p>
             </div>
           </template>
         </UAlert>
-      </template>
-      
-      <!-- 失败状态显示 -->
-      <template v-if="hasErrorFiles">
-        <UAlert
-          color="red"
-          title="部分文件处理失败"
-          icon="i-heroicons-exclamation-triangle"
-          :description="`${errorCount} 个文件处理失败`"
-          class="mb-4"
-        />
       </template>
       
       <!-- 结果列表 -->
