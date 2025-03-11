@@ -77,6 +77,16 @@
             </div>
           </template>
         </UAlert>
+        
+        <!-- 单独的更换模型提示 -->
+        <UAlert
+          v-if="hasErrorFiles"
+          color="amber"
+          title="提示：请尝试更换模型。"
+          icon="i-heroicons-light-bulb"
+          class="mb-4"
+        >
+        </UAlert>
       </template>
       
       <!-- 结果列表 -->

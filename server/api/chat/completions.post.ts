@@ -292,7 +292,7 @@ export default defineEventHandler(async (event) => {
       // 超时错误
       throw createError({
         statusCode: 408,
-        statusMessage: '请求处理超时，请尝试减少代码量或调整参数'
+        statusMessage: '请求超时'
       });
     } else if (error.message === '请求已被用户终止') {
       // 用户终止的请求
