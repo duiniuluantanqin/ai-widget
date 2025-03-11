@@ -116,7 +116,7 @@ export default defineEventHandler(async (event) => {
       // 如果获取失败，返回模拟数据
       return {
         provider,
-        totalBalance: provider === 'deepseek' ? 100.50 : 200.75,
+        totalBalance: 0,
         unit: '元',
         status: 'active',
         note: '无法获取真实余额，显示模拟数据'
