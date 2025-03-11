@@ -35,7 +35,8 @@ export function useCodeChecker() {
   
   // 处理配置
   const processingConfig = ref<ProcessingConfig>({
-    concurrentTasks: 10 // 默认同时处理10个文件
+    concurrentTasks: 10, // 默认同时处理10个文件
+    timeout: 120000 // 默认请求超时时间为120秒
   });
 
   // 计算属性
@@ -71,7 +72,8 @@ export function useCodeChecker() {
           modelProvider: currentModelProvider.value,
           modelId: currentModelId.value,
           prompt: customPrompt.value || undefined,
-          parameters: modelParameters.value
+          parameters: modelParameters.value,
+          timeout: processingConfig.value.timeout // 添加超时参数
         }),
         signal: controller.signal // 添加信号以支持中止
       });

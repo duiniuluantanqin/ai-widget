@@ -270,6 +270,26 @@
               <span class="text-sm tabular-nums w-10 text-right text-green-600 dark:text-green-400 font-medium">{{ processingConfigValue.concurrentTasks }}</span>
             </div>
           </div>
+          
+          <!-- 请求超时 -->
+          <div class="grid grid-cols-2 gap-3 items-center">
+            <div>
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">请求超时</div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">API请求超时时间（秒）</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                type="range"
+                v-model.number="processingConfigValue.timeout"
+                :min="60000"
+                :max="600000"
+                :step="10000"
+                class="w-full h-2 bg-green-100 rounded-lg appearance-none cursor-pointer dark:bg-green-800"
+                @input="(e) => updateProcessingConfig('timeout', e)"
+              />
+              <span class="text-sm tabular-nums w-10 text-right text-green-600 dark:text-green-400 font-medium">{{ Math.round(processingConfigValue.timeout / 1000) }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -489,7 +509,7 @@ const checkTypesValue = ref({
 // 参数面板展开状态
 const isParametersOpen = ref(false);
 // 多线程配置面板展开状态
-const isThreadConfigOpen = ref(true);
+const isThreadConfigOpen = ref(false);
 
 // 监听多选值变化，更新checkType
 watch(checkTypesValue, (newVal) => {
@@ -562,7 +582,8 @@ function resetParameters() {
 // 处理配置
 const safeProcessingConfig = computed(() => {
   const defaultConfig = {
-    concurrentTasks: 10
+    concurrentTasks: 10,
+    timeout: 120000 // 120秒，使用毫秒作为单位
   };
   
   if (!props.processingConfig) {
@@ -572,7 +593,10 @@ const safeProcessingConfig = computed(() => {
   return {
     concurrentTasks: typeof props.processingConfig.concurrentTasks === 'number' 
       ? props.processingConfig.concurrentTasks 
-      : defaultConfig.concurrentTasks
+      : defaultConfig.concurrentTasks,
+    timeout: typeof props.processingConfig.timeout === 'number' 
+      ? props.processingConfig.timeout 
+      : defaultConfig.timeout
   };
 });
 

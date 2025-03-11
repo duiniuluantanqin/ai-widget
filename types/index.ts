@@ -29,6 +29,7 @@ export interface ModelParameters {
 // 处理配置类型
 export interface ProcessingConfig {
   concurrentTasks: number; // 同时处理的文件数量
+  timeout: number; // API请求超时时间（毫秒）
 }
 
 // 文件检查请求类型

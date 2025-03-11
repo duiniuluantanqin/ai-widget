@@ -3,14 +3,47 @@ import type { CheckType, ModelProvider } from '~/types';
 import { DEFAULT_PROMPTS } from '~/types';
 import { registerActiveRequest, removeActiveRequest } from '../check/stop.post';
 
-// 设置请求超时时间（毫秒）
-const REQUEST_TIMEOUT = 60000; // 60秒
+// 默认超时时间，如果请求中没有指定
+const DEFAULT_REQUEST_TIMEOUT = 120000; // 120秒
 
 /**
  * 聊天完成API
  * 处理代码检查请求并返回结果
  */
 export default defineEventHandler(async (event) => {
+  // 获取请求体
+  const body = await readBody(event);
+  
+  // 提取参数
+  const { 
+    code, 
+    fileName: requestFileName,
+    checkType, 
+    modelProvider, 
+    modelId,
+    prompt, 
+    parameters,
+    timeout
+  } = body as {
+    code: string;
+    fileName?: string;
+    checkType: CheckType;
+    modelProvider: ModelProvider;
+    modelId?: string;
+    prompt?: string;
+    parameters: {
+      temperature: number;
+      top_p: number;
+      max_tokens: number;
+      presence_penalty?: number;
+      frequency_penalty?: number;
+    };
+    timeout?: number;
+  };
+  
+  // 使用请求中的timeout或默认值
+  const REQUEST_TIMEOUT = timeout || DEFAULT_REQUEST_TIMEOUT;
+
   // 创建超时Promise
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => {
