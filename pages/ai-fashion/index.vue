@@ -13,93 +13,13 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- 左侧上传区域 -->
         <div class="space-y-4">
-          <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold">上传图片</h2>
-                <UButton
-                  v-if="imageUrl"
-                  color="red"
-                  variant="soft"
-                  icon="i-heroicons-trash"
-                  size="xs"
-                  @click="clearImage"
-                >
-                  清除
-                </UButton>
-              </div>
-            </template>
-
-            <div 
-              class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center"
-              :class="{ 'hover:border-primary-500 cursor-pointer': !imageUrl }"
-              @click="!imageUrl && triggerFileInput"
-              @dragover.prevent
-              @drop.prevent="handleDrop"
-            >
-              <input
-                ref="fileInput"
-                type="file"
-                class="hidden"
-                accept="image/*"
-                @change="handleFileChange"
-              >
-              
-              <template v-if="imageUrl">
-                <div class="relative group">
-                  <img 
-                    :src="imageUrl" 
-                    alt="预览图片"
-                    class="max-h-[400px] mx-auto rounded-lg shadow-md"
-                  >
-                  <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                    <UButton
-                      color="white"
-                      variant="solid"
-                      @click.stop="triggerFileInput"
-                    >
-                      更换图片
-                    </UButton>
-                  </div>
-                </div>
-              </template>
-              
-              <template v-else>
-                <div class="text-center">
-                  <UIcon
-                    name="i-heroicons-photo"
-                    class="mx-auto h-12 w-12 text-gray-400"
-                  />
-                  <div class="mt-4 flex text-sm leading-6 text-gray-600 dark:text-gray-400">
-                    <label
-                      class="relative cursor-pointer rounded-md bg-white dark:bg-gray-800 font-semibold text-primary-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-600 focus-within:ring-offset-2 hover:text-primary-500"
-                    >
-                      <span>点击上传</span>
-                    </label>
-                    <p class="pl-1">或拖放图片到此处</p>
-                  </div>
-                  <p class="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG, GIF 格式</p>
-                </div>
-              </template>
-            </div>
-
-            <template #footer>
-              <div class="flex justify-between items-center">
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  支持拖放上传
-                </p>
-                <UButton
-                  v-if="imageUrl"
-                  color="primary"
-                  :loading="isLoading"
-                  :disabled="isLoading"
-                  @click="generateFashion"
-                >
-                  {{ isLoading ? '生成中...' : '开始生成' }}
-                </UButton>
-              </div>
-            </template>
-          </UCard>
+          <ImageUploader
+            v-model:file="currentFile"
+            title="上传图片"
+            dropzoneText="拖放服装图片到此处或点击选择图片"
+            :maxSize="5 * 1024 * 1024"
+            @error="handleError"
+          />
 
           <UCard>
             <template #header>
@@ -192,12 +112,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import ImageUploader from '~/components/ImageUploader.vue'
 
 // 文件上传相关
-const fileInput = ref<HTMLInputElement | null>(null)
-const imageUrl = ref('')
+const currentFile = ref<File | null>(null)
 const error = ref('')
+const isUploading = ref(false)
 
 // 加载状态
 const isLoading = ref(false)
@@ -234,65 +155,46 @@ const selectedStyle = ref('')
 const selectedScene = ref('')
 const selectedSeason = ref('')
 
-// 触发文件选择
-const triggerFileInput = () => {
-  fileInput.value?.click()
+// 处理上传错误
+const handleError = (message: string) => {
+  error.value = message
 }
 
-// 处理文件改变
-const handleFileChange = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  if (target.files && target.files[0]) {
-    const file = target.files[0]
-    if (validateFile(file)) {
-      displayImage(file)
+// 监听文件变化
+watch(currentFile, async (newFile) => {
+  if (newFile) {
+    isUploading.value = true
+    try {
+      const formData = new FormData()
+      formData.append('file', newFile)
+
+      const response = await fetch('/api/fashion/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+      
+      if (result.code === 0) {
+        results.value = [] // 清空之前的结果
+        error.value = '' // 清除错误信息
+      } else {
+        throw new Error(result.message)
+      }
+    } catch (e: any) {
+      error.value = e.message || '上传失败'
+    } finally {
+      isUploading.value = false
     }
+  } else {
+    // 文件被清除
+    results.value = []
   }
-}
-
-// 处理拖放
-const handleDrop = (event: DragEvent) => {
-  const file = event.dataTransfer?.files[0]
-  if (file && validateFile(file)) {
-    displayImage(file)
-  }
-}
-
-// 验证文件
-const validateFile = (file: File) => {
-  if (!file.type.startsWith('image/')) {
-    error.value = '请上传图片文件'
-    return false
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    error.value = '图片大小不能超过5MB'
-    return false
-  }
-  error.value = ''
-  return true
-}
-
-// 显示图片
-const displayImage = (file: File) => {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    imageUrl.value = e.target?.result as string
-  }
-  reader.readAsDataURL(file)
-}
-
-// 清除图片
-const clearImage = () => {
-  imageUrl.value = ''
-  if (fileInput.value) {
-    fileInput.value.value = ''
-  }
-  results.value = []
-}
+})
 
 // 生成搭配
 const generateFashion = async () => {
-  if (!imageUrl.value) {
+  if (!currentFile.value) {
     error.value = '请先上传图片'
     return
   }
@@ -303,17 +205,20 @@ const generateFashion = async () => {
     // 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 2000))
     
+    // 创建预览URL
+    const imageUrl = URL.createObjectURL(currentFile.value)
+    
     results.value = [
       {
-        imageUrl: imageUrl.value, // 这里应该是生成的新图片
+        imageUrl: imageUrl,
         description: '这套搭配采用了简约大方的设计理念，搭配舒适透气的面料，适合日常穿着。上衣选用柔和的米色，下装搭配深色系，打造出层次感。'
       },
       {
-        imageUrl: imageUrl.value, // 这里应该是生成的新图片
+        imageUrl: imageUrl,
         description: '这是一套充满活力的搭配方案，采用了明亮的色彩组合，突出个性化风格。通过巧妙的配饰点缀，提升整体时尚度。'
       }
     ]
-  } catch (e) {
+  } catch (e: any) {
     error.value = '生成失败，请重试'
   } finally {
     isLoading.value = false
@@ -322,14 +227,29 @@ const generateFashion = async () => {
 
 // 下载结果
 const downloadResults = () => {
-  // TODO: 实现结果下载功能
-  const element = document.createElement('a')
-  element.href = results.value[0].imageUrl
-  element.download = 'fashion-result.png'
-  document.body.appendChild(element)
-  element.click()
-  document.body.removeChild(element)
+  if (results.value.length > 0 && currentFile.value) {
+    const element = document.createElement('a')
+    element.href = results.value[0].imageUrl
+    element.download = `fashion-result-${currentFile.value.name}`
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
 }
+
+// 监听上传状态
+watch(isUploading, (newValue) => {
+  if (newValue) {
+    const toast = useToast()
+    toast.add({
+      title: '上传中',
+      description: '请稍候...',
+      icon: 'i-heroicons-arrow-path',
+      color: 'blue',
+      timeout: 1000
+    })
+  }
+})
 </script>
 
 <style scoped>

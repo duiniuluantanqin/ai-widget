@@ -4,7 +4,7 @@
       <template #header>
         <div class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -mx-4 -mt-4 px-3 py-2 rounded-t-lg">
           <div class="flex items-center">
-            <h3 class="text-lg font-medium text-blue-800 dark:text-blue-300">上传文件</h3>
+            <h3 class="text-lg font-medium text-blue-800 dark:text-blue-300">{{ title }}</h3>
             <UTooltip :text="`文件总大小限制为 ${formatFileSize(MAX_TOTAL_SIZE)}`">
               <UButton
                 color="amber"
@@ -30,12 +30,12 @@
       <div class="mb-3">
         <UUpload
           ref="uploader"
-          :multiple="true"
-          :accept="['text/plain', 'text/javascript', 'text/typescript', '.js', '.ts', '.jsx', '.tsx', '.vue', '.py', '.java', '.c', '.cpp', '.h', '.hpp', '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt']"
+          :multiple="multiple"
+          :accept="accept"
           :model-value="filesList"
           @update:model-value="handleFileSelect"
-          label="上传源代码文件"
-          :help="`支持多种编程语言文件，支持多选，总大小不超过${Number(config.public.maxFileSizeKB) || 10}KB`"
+          :label="label"
+          :help="help"
         />
       </div>
       
@@ -67,7 +67,7 @@
           <ul class="space-y-2 max-h-60 overflow-y-auto">
             <li v-for="(file, index) in filesList" :key="index" class="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-md">
               <div class="flex items-center">
-                <UIcon name="i-heroicons-document-text" class="mr-2" />
+                <UIcon :name="fileIcon" class="mr-2" />
                 <span class="text-sm">{{ file.name }} <span class="text-xs text-gray-500">({{ formatFileSize(file.size) }})</span></span>
               </div>
               <UButton
@@ -97,7 +97,7 @@
             @dragenter.prevent="() => {}"
           >
             <div class="flex items-center justify-center">
-              <UIcon name="i-heroicons-document-arrow-up" class="text-xl mr-2" />
+              <UIcon :name="fileIcon" class="text-xl mr-2" />
               <span>拖放文件到此处或点击继续上传</span>
             </div>
           </div>
@@ -111,9 +111,9 @@
           @dragover.prevent="() => {}"
           @dragenter.prevent="() => {}"
         >
-          <UIcon name="i-heroicons-document-arrow-up" class="text-3xl mb-2" />
-          <p>拖放文件到此处或点击选择文件</p>
-          <UButton color="gray" variant="soft" class="mt-3" icon="i-heroicons-folder-open" @click.stop="openFileDialog">
+          <UIcon :name="fileIcon" class="text-3xl mb-2" />
+          <p>{{ dropzoneText }}</p>
+          <UButton color="gray" variant="soft" class="mt-3" :icon="fileIcon" @click.stop="openFileDialog">
             浏览文件
           </UButton>
         </div>
@@ -130,6 +130,30 @@ const props = defineProps({
   files: {
     type: Array as () => File[],
     default: () => []
+  },
+  accept: {
+    type: Array as () => string[],
+    default: () => []
+  },
+  multiple: {
+    type: Boolean,
+    default: true
+  },
+  title: {
+    type: String,
+    default: '上传文件'
+  },
+  label: {
+    type: String,
+    default: '上传文件'
+  },
+  help: {
+    type: String,
+    default: ''
+  },
+  dropzoneText: {
+    type: String,
+    default: '拖放文件到此处或点击选择文件'
   }
 });
 
@@ -157,6 +181,15 @@ const filesList = computed(() => props.files || []);
 
 // 计算总字节数
 const totalSize = computed(() => calculateTotalSize(filesList.value));
+
+// 根据accept类型显示不同的图标
+const fileIcon = computed(() => {
+  const firstAccept = props.accept[0] || '';
+  if (firstAccept.startsWith('image/')) {
+    return 'i-heroicons-photo';
+  }
+  return 'i-heroicons-document-text';
+});
 
 // 监听文件列表变化，计算总大小并更新状态
 watch(filesList, (files) => {

@@ -49,6 +49,34 @@
               @update:files="updateFiles"
               @remove="handleRemoveFile"
               @clear="handleClearFiles"
+              :accept="[
+                'text/plain',
+                'text/javascript',
+                'text/typescript',
+                '.js',
+                '.ts',
+                '.jsx',
+                '.tsx',
+                '.vue',
+                '.py',
+                '.java',
+                '.c',
+                '.cpp',
+                '.h',
+                '.hpp',
+                '.cs',
+                '.php',
+                '.rb',
+                '.go',
+                '.rs',
+                '.swift',
+                '.kt'
+              ]"
+              title="上传代码"
+              label="上传源代码文件"
+              :help="`支持多种编程语言文件，支持多选，总大小不超过${Number($config.public.maxFileSizeKB) || 10}KB`"
+              dropzoneText="拖放代码文件到此处或点击选择文件"
+              :multiple="true"
               @size-exceeded="handleSizeExceeded"
               @total-size-change="handleTotalSizeChange"
             />
