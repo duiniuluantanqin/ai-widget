@@ -26,8 +26,8 @@
 
         <!-- AI换装卡片 -->
         <div 
-          class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl rounded-lg p-6 hover:shadow-2xl transition-shadow duration-300 cursor-pointer opacity-75"
-          @click="showComingSoonToast"
+          class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl rounded-lg p-6 hover:shadow-2xl transition-shadow duration-300 cursor-pointer"
+          @click="navigateTo('/ai-fashion')"
         >
           <div class="text-center">
             <div class="h-12 w-12 mx-auto mb-4">
@@ -38,9 +38,6 @@
             </div>
             <h2 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">AI换装</h2>
             <p class="text-gray-600 dark:text-gray-400">智能时尚搭配助手</p>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 mt-2">
-              即将推出
-            </span>
           </div>
         </div>
       </div>
@@ -49,15 +46,6 @@
 </template>
 
 <script setup lang="ts">
-const showComingSoonToast = () => {
-  useToast().add({
-    icon: 'i-heroicons-sparkles',
-    title: '敬请期待',
-    description: '我们正在开发这个令人兴奋的新功能！',
-    color: 'blue',
-    timeout: 3000
-  })
-}
 </script>
 
 <style scoped>

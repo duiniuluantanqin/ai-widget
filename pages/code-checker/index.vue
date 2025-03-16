@@ -1,94 +1,91 @@
 <template>
-  <div class="container mx-auto px-2 py-4">
-    <UContainer>
-      <div class="flex flex-col">
-        <CodeCheckerHeader />
-        <!-- API错误提示 -->
-        <UAlert
-          v-if="apiError"
-          class="mb-3"
-          color="red"
-          title="API连接错误"
-          :description="apiError"
-          icon="i-heroicons-exclamation-triangle"
-          closable
-          @close="apiError = ''"
-        >
-          <template #description>
-            <p>{{ apiError }}</p>
-            <div class="mt-2">
-              <UButton size="xs" @click="retryLoadModels">重试</UButton>
-            </div>
-          </template>
-        </UAlert>
-        
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <!-- 左侧设置面板 -->
-          <div class="lg:col-span-4">
-            <div class="sticky top-4 space-y-4">
-              <!-- 模型设置 -->
-              <ModelSettings
-                :model="state.currentModelProvider"
-                :model-id="state.currentModelId"
-                :check-type="state.currentCheckType"
-                :parameters="state.modelParameters"
-                :prompt="state.customPrompt"
-                :default-prompt="state.defaultPrompt"
-                :providers="state.providers"
-                :is-loading="state.isLoadingModels"
-                :processing-config="state.processingConfig"
-                @update:model="codeChecker.setModelProvider"
-                @update:model-id="codeChecker.setModelId"
-                @update:check-type="codeChecker.setCheckType"
-                @update:parameters="codeChecker.setModelParameters"
-                @update:prompt="codeChecker.setCustomPrompt"
-                @update:processing-config="handleUpdateProcessingConfig"
-              />
-              
-              <!-- 文件上传 -->
-              <FileUploader
-                :files="state.selectedFiles"
-                @update:files="updateFiles"
-                @remove="handleRemoveFile"
-                @clear="handleClearFiles"
-                @size-exceeded="handleSizeExceeded"
-                @total-size-change="handleTotalSizeChange"
-              />
-              
-              <!-- 开始检查按钮 -->
-              <div class="flex flex-col">
-                <UButton
-                  block
-                  color="blue"
-                  size="lg"
-                  :loading="state.isProcessing"
-                  :disabled="!state.hasFiles || state.isProcessing || !state.currentModelId || isSizeExceeded"
-                  @click="handleStartCheck"
-                >
-                  <div class="flex items-center justify-center w-full">
-                    <span>{{ state.isProcessing ? '处理中...' : (isSizeExceeded ? '文件大小超限' : '开始检查') }}</span>
-                    <span v-if="totalFileSize > 0 && !state.isProcessing && !isSizeExceeded" class="text-xs opacity-80 ml-2">
-                      (预计花费: {{ estimatedCost }}元)
-                    </span>
-                  </div>
-                </UButton>
-              </div>
-            </div>
+  <UContainer>
+    <div class="flex flex-col">
+      <!-- API错误提示 -->
+      <UAlert
+        v-if="apiError"
+        class="mb-3"
+        color="red"
+        title="API连接错误"
+        :description="apiError"
+        icon="i-heroicons-exclamation-triangle"
+        closable
+        @close="apiError = ''"
+      >
+        <template #description>
+          <p>{{ apiError }}</p>
+          <div class="mt-2">
+            <UButton size="xs" @click="retryLoadModels">重试</UButton>
           </div>
-          
-          <!-- 右侧结果面板 -->
-          <div class="lg:col-span-8">
-            <ResultsList 
-              :results="state.checkResults" 
-              :concurrent-tasks="state.processingConfig.concurrentTasks"
-              @stop="handleStopCheck"
-              @retry-item="retryItem"
+        </template>
+      </UAlert>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- 左侧设置面板 -->
+        <div class="lg:col-span-4">
+          <div class="sticky top-4 space-y-4">
+            <!-- 模型设置 -->
+            <ModelSettings
+              :model="state.currentModelProvider"
+              :model-id="state.currentModelId"
+              :check-type="state.currentCheckType"
+              :parameters="state.modelParameters"
+              :prompt="state.customPrompt"
+              :default-prompt="state.defaultPrompt"
+              :providers="state.providers"
+              :is-loading="state.isLoadingModels"
+              :processing-config="state.processingConfig"
+              @update:model="codeChecker.setModelProvider"
+              @update:model-id="codeChecker.setModelId"
+              @update:check-type="codeChecker.setCheckType"
+              @update:parameters="codeChecker.setModelParameters"
+              @update:prompt="codeChecker.setCustomPrompt"
+              @update:processing-config="handleUpdateProcessingConfig"
             />
+            
+            <!-- 文件上传 -->
+            <FileUploader
+              :files="state.selectedFiles"
+              @update:files="updateFiles"
+              @remove="handleRemoveFile"
+              @clear="handleClearFiles"
+              @size-exceeded="handleSizeExceeded"
+              @total-size-change="handleTotalSizeChange"
+            />
+            
+            <!-- 开始检查按钮 -->
+            <div class="flex flex-col">
+              <UButton
+                block
+                color="blue"
+                size="lg"
+                :loading="state.isProcessing"
+                :disabled="!state.hasFiles || state.isProcessing || !state.currentModelId || isSizeExceeded"
+                @click="handleStartCheck"
+              >
+                <div class="flex items-center justify-center w-full">
+                  <span>{{ state.isProcessing ? '处理中...' : (isSizeExceeded ? '文件大小超限' : '开始检查') }}</span>
+                  <span v-if="totalFileSize > 0 && !state.isProcessing && !isSizeExceeded" class="text-xs opacity-80 ml-2">
+                    (预计花费: {{ estimatedCost }}元)
+                  </span>
+                </div>
+              </UButton>
+            </div>
           </div>
         </div>
+        
+        <!-- 右侧结果面板 -->
+        <div class="lg:col-span-8">
+          <ResultsList 
+            :results="state.checkResults" 
+            :concurrent-tasks="state.processingConfig.concurrentTasks"
+            @stop="handleStopCheck"
+            @retry-item="retryItem"
+          />
+        </div>
       </div>
-    </UContainer>
-  </div>
+    </div>
+  </UContainer>
 </template>
 
 <script setup lang="ts">
