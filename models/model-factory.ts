@@ -1,6 +1,7 @@
 import type { ModelProvider } from '~/types';
 import { BaseModel } from './base-model';
 import { OpenAICompatibleModel } from './openai-compatible-model';
+import { GeminiModel } from './gemini-model';
 
 /**
  * 模型工厂类，用于创建不同的模型实例
@@ -20,7 +21,7 @@ export class ModelFactory {
       case 'siliconflow':
         return new OpenAICompatibleModel(apiKey, apiUrl);
       case 'gemini':
-        return new OpenAICompatibleModel(apiKey, apiUrl, 'gemini-2.0-flash-experimental');
+        return new GeminiModel(apiKey);
       default:
         throw new Error(`不支持的模型提供者: ${provider}`);
     }
