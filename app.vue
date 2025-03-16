@@ -3,7 +3,10 @@
     <header class="w-full py-2 px-3 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div class="container mx-auto flex justify-between items-center">
         <!-- 左侧项目名称和logo -->
-        <div class="flex items-center">
+        <div 
+          class="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
+          @click="navigateTo('/')"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600 dark:text-blue-400 mr-2">
             <path d="M20 11.08V8l-6-6H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2v-3.08"></path>
             <path d="M18 14h-7"></path>
