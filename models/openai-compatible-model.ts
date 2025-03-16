@@ -5,13 +5,16 @@ import { DEFAULT_PROMPTS } from '~/types';
 
 /**
  * 兼容OpenAI接口的模型实现
- * 适用于Deepseek、SiliconFlow等兼容OpenAI接口的模型
+ * 适用于Deepseek、SiliconFlow、Gemini等兼容OpenAI接口的模型
  */
 export class OpenAICompatibleModel extends BaseModel {
   private client: OpenAI;
+  private defaultModelId: string;
 
-  constructor(apiKey: string, apiUrl: string) {
+  constructor(apiKey: string, apiUrl: string, defaultModelId: string = 'default') {
     super(apiKey, apiUrl);
+    
+    this.defaultModelId = defaultModelId;
     
     // 创建OpenAI客户端，添加dangerouslyAllowBrowser选项
     // 注意：在生产环境中应确保只在服务器端使用
@@ -43,14 +46,14 @@ export class OpenAICompatibleModel extends BaseModel {
       presence_penalty?: number;
       frequency_penalty?: number;
     },
-    modelId: string = 'default',
+    modelId?: string,
     abortController?: AbortController
   ): Promise<string> {
     try {
       const finalPrompt = `${prompt}\n\n代码内容:\n\`\`\`\n${code}\n\`\`\``;
       
       const response = await this.client.chat.completions.create({
-        model: modelId, // 使用指定的模型ID
+        model: modelId || this.defaultModelId, // 使用指定的模型ID或默认模型ID
         messages: [
           {
             role: 'system',

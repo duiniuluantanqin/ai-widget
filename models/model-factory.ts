@@ -19,6 +19,8 @@ export class ModelFactory {
       case 'deepseek':
       case 'siliconflow':
         return new OpenAICompatibleModel(apiKey, apiUrl);
+      case 'gemini':
+        return new OpenAICompatibleModel(apiKey, apiUrl, 'gemini-2.0-flash-experimental');
       default:
         throw new Error(`不支持的模型提供者: ${provider}`);
     }

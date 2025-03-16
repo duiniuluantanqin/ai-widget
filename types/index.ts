@@ -1,5 +1,5 @@
 // 模型类型定义
-export type ModelProvider = 'deepseek' | 'siliconflow';
+export type ModelProvider = 'deepseek' | 'siliconflow' | 'gemini';
 
 // 检查类型定义
 export type CheckType = 'spelling' | 'bugs';
